@@ -1,13 +1,8 @@
-rtmpdump (2.4-n97-gita107cef-ppa8a~trusty) trusty; urgency=low
+rtmpdump (2.4-n97-gita107cef-ppa8~trusty) trusty; urgency=low
   * add KSV patches dated 05-May-2015
+  * update packaging scripts
 
  -- Jon Davies <jon@hedgerows.org.uk>  Thu, 09 Jul 2015 10:28:00 +0100
-
-rtmpdump (2.4-n97-gita107cef-ppa8~vivid) vivid; urgency=medium
-
-  * new upstream snapshot, see changelog.git
-
- -- Jon Davies <jon@hedgerows.org.uk>  Tue, 21 Apr 2015 11:06:54 +0000
 
 rtmpdump (2.4-n87-gita9f353c-ppa8~saucy) saucy; urgency=low
 
