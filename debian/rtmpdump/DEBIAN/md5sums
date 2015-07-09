@@ -1,0 +1,15 @@
+419fab7bcb3827e78184e64d5fc6174c  usr/bin/rtmpdump
+ef8e8f9a70dd99633b93ce982801abfd  usr/sbin/rtmpgw
+2f286636708ee3d72a3b484abcf03976  usr/sbin/rtmpsrv
+c65afe69eaf25da07fc4b99dce8c7295  usr/sbin/rtmpsuck
+f861658b8d23d320b5225d9513b41227  usr/share/doc/rtmpdump/COPYING.gz
+d8a0cfa6d91a1701feaaddd82bc2b50b  usr/share/doc/rtmpdump/ChangeLog.gz
+f1c7268a6f239f50b8a18b34ad7d90e9  usr/share/doc/rtmpdump/README.gz
+5e4e231a6f04ffdb1f0ed3da8848b6ae  usr/share/doc/rtmpdump/changelog.Debian.gz
+d8a0cfa6d91a1701feaaddd82bc2b50b  usr/share/doc/rtmpdump/changelog.gz
+8c62fa3874acac31924626d4c1426855  usr/share/doc/rtmpdump/copyright
+ceebcfd879ebe90dae880e45318c0120  usr/share/doc/rtmpdump/librtmp.3.html
+c2ee7aef4f3355df4960b58037c11e9e  usr/share/doc/rtmpdump/rtmpdump.1.html
+3c1cc8f5e6de3548aabf55819dd57744  usr/share/doc/rtmpdump/rtmpgw.8.html
+4ca7818aa3bd57b807375c260382c29c  usr/share/man/man1/rtmpdump.1.gz
+09e32ea404211fbf7e34f4ca78f55542  usr/share/man/man8/rtmpgw.8.gz

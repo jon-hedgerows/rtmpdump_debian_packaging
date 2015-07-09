@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/makefile.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk
+
+DEB_MAKE_CLEAN_TARGET := clean
+DEB_MAKE_BUILD_TARGET := all VERSION=v$(DEB_VERSION) prefix=/usr CRYPTO=OPENSSL SHARED=no
+# don't install using make
+DEB_MAKE_INSTALL_TARGET := 
+# no check for this software
+DEB_MAKE_CHECK_TARGET :=
+# no extra args are required for make
+DEB_MAKE_EXTRA_ARGS :=

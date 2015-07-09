@@ -1,0 +1,87 @@
+rtmpdump (2.4-n97-gita107cef-ppa8a~trusty) trusty; urgency=low
+  * add KSV patches dated 05-May-2015
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Thu, 09 Jul 2015 10:28:00 +0100
+
+rtmpdump (2.4-n97-gita107cef-ppa8~vivid) vivid; urgency=medium
+
+  * new upstream snapshot, see changelog.git
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Tue, 21 Apr 2015 11:06:54 +0000
+
+rtmpdump (2.4-n87-gita9f353c-ppa8~saucy) saucy; urgency=low
+
+  * new upstream snapshot, see changelog.git
+  * buffer size patch remains in place
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Sun, 20 Oct 2013 18:02:40 +0100
+
+rtmpdump (2.4-n78-git3a1e20c-ppa8~raring) raring; urgency=low
+
+  * new upstream snapshot, see changelog.git
+  * add buffer size patch to change buffers from 64x1024 to 64x4096
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Fri, 18 Jan 2013 09:28:46 +0000
+
+rtmpdump (2.4-n44-gite0056c5-ppa7~precise) precise; urgency=low
+
+  * new upstream snapshot
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Tue, 11 Sep 2012 22:33:41 +0100
+
+rtmpdump (2.4-n37-git4e06e21-ppa7~quantal) quantal; urgency=low
+
+  * repackage to use openssl instead of gnutls
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Sat, 16 Jun 2012 16:18:00 +0100
+
+rtmpdump (2.4-n37-git4e06e21-ppa6~oneiric) oneiric; urgency=low
+
+  * new git snapshot
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Tue, 24 Jan 2012 16:27:38 +0100
+
+rtmpdump (2.4-n25-git60218d0-ppa6~oneiric) oneiric; urgency=low
+
+  * add librtmp-dev back, with static library only (no shared libs)
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Sat, 19 Nov 2011 09:52:23 +0000
+
+rtmpdump (2.4-n25-git60218d0-ppa5~oneiric) oneiric; urgency=low
+
+  * new upstream snapshot
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Tue, 01 Nov 2011 18:31:57 +0000
+
+rtmpdump (2.4-n23-gitc58cfb3-ppa4~lucid) lucid; urgency=low
+
+  * fix librtmp0 dependency
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Fri, 14 Oct 2011 20:56:06 +0100
+
+rtmpdump (2.4-n23-gitc58cfb3-ppa3~lucid) lucid; urgency=low
+
+  * new snapshot from git, see changelog.git
+  * adjusted packaging to fit snapshot
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Mon, 05 Sep 2011 17:00:48 +0100
+
+rtmpdump (2.4-ppa2~lucid) lucid; urgency=low
+
+  * new snapshot from git
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Sat, 16 Jul 2011 21:21:11 +0100
+
+rtmpdump (2.3+svn569-ppa2~lucid) lucid; urgency=low
+
+  * Fix versioning (launchpad builds on natty onwards reject version
+  * numbers starting with a letter)
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Thu, 26 May 2011 15:41:54 +0100
+
+rtmpdump (v2.3+svn569-ppa1~lucid) lucid; urgency=low
+
+  * new svn snapshot
+  * cdbs based packaging
+
+ -- Jon Davies <jon@hedgerows.org.uk>  Thu, 26 May 2011 10:29:13 +0100

@@ -1,0 +1,6 @@
+rtmpdump	usr/bin
+rtmpgw		usr/sbin
+rtmpsrv		usr/sbin
+rtmpsuck	usr/sbin
+rtmpdump.1	usr/share/man/man1
+rtmpgw.8	usr/share/man/man8

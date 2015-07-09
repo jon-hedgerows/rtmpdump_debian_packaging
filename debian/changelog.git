@@ -1,0 +1,4471 @@
+commit a107cef9b392616dff54fabfd37f985ee2190a6f
+Author: Cheolho Park <cheolhop@google.com>
+Date:   Wed Jan 14 23:24:12 2015 +0200
+
+    Add extended timestamp for Type 3 chunks if necessary
+    
+    Section 5.3.1.3 of the RTMP spec say that type 3 packets also
+    should repeat this field. This matches what the parsing code (in
+    RTMP_ReadPacket) does.
+
+commit a1900c3e152085406ecb87c1962c55ec9c6e4016
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun Jul 6 01:09:31 2014 +0300
+
+    Replace RTMP_PUB_ALLOC with RTMP_LF_FTCU and RTMP_LF_FAPU
+    
+    This gets rid of the overlap between these two flags, shortening
+    the code somewhat.
+
+commit 4444f20554534a91b31b03399f9a695f410b4ae6
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun Jul 6 00:58:26 2014 +0300
+
+    Simplify the logic for freeing reused strings in RTMP_Close
+    
+    Instead of having a plethora of flags indicating the current
+    state (just to avoid freeing them when closing the previous
+    connection when reconnecting), split RTMP_Close into CloseInternal,
+    taking a flag saying whether this is a reconnect or a normal,
+    final RTMP_Close call.
+    
+    This also avoids leaks of some strings, if the whole session is
+    closed while the authentication process is underway.
+
+commit 0226b868539463e27dead0892bb48493ddcd0337
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun Jul 6 00:44:29 2014 +0300
+
+    Set RTMP_PUB_ALLOC if tcUrl is allocated in PublisherAuth
+    
+    This makes sure we don't free tcUrl in RTMP_Close when reconnecting,
+    and avoids leaks (or simplifies code to avoid leaks).
+    
+    This fixes connecting with authentication (both adobe and limelight)
+    when the app has been specified separately from the rest of the url.
+    
+    This is only a temporary step while refactoring, this is removed
+    in a later commit.
+
+commit 1a07d6826506b21612b0e6e2b5fa9fb29b01921e
+Author: Martin Storsjo <martin@martin.st>
+Date:   Fri Jul 4 22:37:29 2014 +0300
+
+    Reconnect directly when authenticating, don't wait for the close message
+    
+    This fixes authentication with wowza 4.x servers, which don't
+    send any close message in the authentication process.
+
+commit 79459a2b43f41ac44a2ec001139bcb7b1b8f7497
+Author: Martin Panter <vadmium à gmail·com>
+Date:   Wed Sep 18 11:58:01 2013 +1000
+
+    Extended timestamp field may be present in type 3 chunk headers
+    
+    As described in Adobe’s RTMP specification dated 21 Dec 2012; also:
+    
+    * RTMPY ticket #107, “Compressed headers also can have an extended
+      timestamp”,
+      http://web.archive.org/web/20120624031323/http://dev.rtmpy.org/ticket/107
+    * https://rarut.wordpress.com/2012/03/21/announcing-nginx-rtmp-module/
+    
+    This resolves intermittent hangs, segfaults and crashes I was seeing when
+    starting ABC News 24 streams, e.g.:
+    
+    rtmpdump -r rtmp://cp81899.live.edgefcs.net/live/news24-med@28772 --live
+    
+    Some of the packets seemed to contain junk timestamp fields, which often
+    required the extended field.
+
+commit dc76f0a8461e6c8f1277eba58eae201b2dc1d06a
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Dec 5 11:27:30 2013 +0200
+
+    Fix leaks in AMF objects that contain arrays
+
+commit 3cd3440f0eb018f32a1f0ada32fef077bf7821b4
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Dec 5 11:06:49 2013 +0200
+
+    Free the extra read buffer if the initial FLV buffer overflowed
+    
+    This fixes a leak in this cornercase.
+
+commit c89b57271fa4e8548930574c462f3fb98be9276f
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Dec 5 11:00:43 2013 +0200
+
+    Correct the count of bytes written to the initial FLV buffer
+    
+    This matters if the buffer overflows, when the count is used
+    for patching the buffer back together. This happens if there
+    are multiple video packets with zero timestamp at the start
+    of the stream (before any audio packets), enough to fill the buffer.
+
+commit a9f353c7ccf29d6305e13fedb77653b8681e9fc2
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Oct 7 12:00:03 2013 +0300
+
+    Bump the SO_VERSION to 1
+    
+    Commit a9282329c3 changed the layout of the RTMP struct, making
+    it ABI-incompatible with previous versions.
+
+commit 95184863fb7b84802a6dcd1bbffd3a6a6f5bd044
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Sep 23 22:45:29 2013 +0300
+
+    Include -lgmp in the pkg-config file when building with gnutls
+    
+    This is required when a user of librtmp is linking statically to
+    librtmp (when it is built with gnutls support).
+    
+    Ideally everything of the Requires line should be in
+    Requires.private, and -lgmp would go into Libs.private - but if
+    only building a static lib, they should go where they are right
+    now instead. Keeping all of this where it is right now, for now,
+    for simplicity.
+
+commit 0d44da9f5f5a4aa7cd64566c64d89d2fb392e3ef
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Sep 23 22:05:16 2013 +0300
+
+    Include the nettle/hogweed crypto libraries in the pkg-config file
+    
+    These libraries are linked and used as directly as we use gnutls
+    itself. This fixes linking for callers if librtmp is built
+    statically or if the linker doesn't support transitive linking.
+
+commit 5ba573a97122d7844b907a34f98d2b120e97070c
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Aug 15 13:37:37 2013 +0300
+
+    Fix limelight authentication with abbreviated app names
+    
+    When streaming to limelight, the app name is either a full
+    "appname/subaccount" or "appname/_definst_". In the latter case,
+    the app name can be simplified into simply "appname", but the
+    authentication hashing assumes the /_definst_ still to be present.
+
+commit ec606b685c2b758ad3dafeccbeb870908a9720c8
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Aug 15 13:37:19 2013 +0300
+
+    Don't do strchr on a string that isn't necessarily null-terminated
+
+commit 8e3064207fa7535baad07fd06b65630ec8b31a08
+Author: Martin Storsjo <martin@martin.st>
+Date:   Fri Jul 19 15:40:25 2013 +0300
+
+    Don't use non-public gnutls functions
+    
+    The internal functions gnutls_calc_dh_secret and gnutls_calc_dh_key
+    have changed signature in recent gnutls versions - don't use them
+    but manually do roughly the same as what they used to do before
+    using only public API functions.
+
+commit df6c51884243ef2bd12931e6c617b2be7520ca26
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun Dec 30 22:52:04 2012 +0200
+
+    Remove a useless leftover comment
+    
+    The variable is any random challenge, thus the byte order doesn't
+    matter at all.
+
+commit f8fcf64f4f80c070f8c93e40249c43fe6299ffe4
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun Dec 30 14:03:58 2012 +0200
+
+    Only use one challenge value in adobe auth
+    
+    Some servers (akamai) only include a 'challenge' parameter, no
+    'opaque' parameter, while others (wowza) include both 'opaque'
+    and 'challenge'. If 'opaque' is provided, it should be used here,
+    otherwise 'challenge', but never both.
+    
+    After this patch, adobe auth works against both wowza and akamai
+    servers.
+
+commit 38d3aeaeef99182ac2daaf0e56145887f0a51cd4
+Author: Björn Axelsson <bjorn.axelsson@intinor.se>
+Date:   Sun Dec 30 14:01:57 2012 +0200
+
+    Correct the length of base64 digests
+    
+    This was broken in e42b5d09. This makes adobe auth against
+    akamai servers work again.
+
+commit 3a1e20c08cc4f7ad8b6684fadd0bfb4420376809
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Sun Dec 9 04:12:15 2012 -0800
+
+    Fix b77a7dc719f8b04274db91f6344f4358a78d9c5f
+    
+    DumpMetadata needs to recognize ARRAY types now.
+
+commit 19d36368f6c1ec6fa55df319173ca93048309f9a
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Fri Nov 9 07:58:08 2012 -0800
+
+    PolarSSL 1.2.x compat
+
+commit feb81c8b3e0102b2eed18a34cbfb1e8a513e99ae
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Thu Nov 1 17:00:31 2012 -0700
+
+    Fix gnutls build
+    
+    Missing semicolon in e42b5d0926b1a668d7fbd794a70f31040c5f198d
+
+commit e79a07c8625b56ebb182c12343518faff4902de7
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 14:40:14 2012 -0700
+
+    PolarSSL version fixes
+    
+    Fix commit a312ac7770207bd7d07725c1aef43725206e803a
+
+commit f3e3e6b507ac0df89a11764abd15cc9535593735
+Author: Björn Axelsson <bjorn.axelsson@intinor.se>
+Date:   Tue Oct 30 19:31:01 2012 +0200
+
+    Look for a fourth slash when splitting the url into app+playpath
+
+commit 9d6dc72d7c43554dbe8cdb02f450807230df8c25
+Author: Martin Storsjo <martin@martin.st>
+Date:   Tue Oct 30 19:22:16 2012 +0200
+
+    Simplify initializing the TLS server context
+    
+    This does the same thing, but I wasn't aware of these functions
+    when I initially wrote this.
+
+commit 1f6c6434d6794b3ba14540a141bab358eba48b13
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 11:30:07 2012 -0700
+
+    More authentication cleanup
+
+commit e42b5d0926b1a668d7fbd794a70f31040c5f198d
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 11:17:41 2012 -0700
+
+    Cleanup authentication code
+    
+    from commit 9ecf540e4d5bdc85c17668fa7ead93cc375111ca
+
+commit 883c33489403ed360a01d1a47ec76d476525b49e
+Author: LRN <lrn1986@gmail.com>
+Date:   Sat May 5 21:15:36 2012 +0400
+
+    Fix dll name to have SO_VERSION
+    
+    -----BEGIN PGP SIGNED MESSAGE-----
+    Hash: SHA1
+    
+    subj is attached
+    
+    Changes librtmp.dll into librtmp-$(SO_VERSION).dll, the same form that
+    libtool uses.
+    librtmp.dll is still created from librtmp-$(SO_VERSION).dll via `ln
+    - -sf'; obviously, it makes a hardlink when called in MSYS, but that's
+    no worse than what we have right now.
+    
+    Please, CC me, since i'm not subscibed to this list
+    -----BEGIN PGP SIGNATURE-----
+    Version: GnuPG v1.4.11 (MingW32)
+    Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+    
+    iQEcBAEBAgAGBQJPpWA2AAoJEOs4Jb6SI2Cw+xIH/jqI7SbM1nMHBhFDSDtDFxim
+    zzlX5zsU9Ss45ZX9VMdzXLSDvxsuB6a97svMlipU2HOs4Ba1rcO8fdNII/8lD7nt
+    yIWiGDcyZNXP7xBXJOVahYwzDzpyGhOychl2XlgW8/9lY7V1DYFjlPUSWdfw8IH0
+    iUX6PKMjrN3n4TTIh1kTwG0YHBRq2JdsRAaTB1uQDwBwNFkNPegWTO8oVvtlb1sc
+    gxhmN08o/S7nWAJRs5+Ah9eYSvWJral5yzIcxeOISGkZJxLs16F0b5iVtd2J1xN4
+    3mNQH4W3n7q/EcsF18/UwI8VjcAZnyCXMGI1VXp9frFEvm8//Bv9jSrWKfrZPwI=
+    =/n61
+    -----END PGP SIGNATURE-----
+    
+    From 4d885c0ef9eab89ec7ed1383fd5cba5587a6a311 Mon Sep 17 00:00:00 2001
+    From: =?UTF-8?q?=D0=A0=D1=83=D1=81=D0=BB=D0=B0=D0=BD=20=D0=98=D0=B6=D0=B1=D1?=
+     =?UTF-8?q?=83=D0=BB=D0=B0=D1=82=D0=BE=D0=B2?= <lrn1986@gmail.com>
+    Date: Sat, 5 May 2012 21:05:30 +0400
+    Subject: [PATCH] Fix dll name to have SO_VERSION
+
+commit 9ecf540e4d5bdc85c17668fa7ead93cc375111ca
+Author: Björn Axelsson <bjorn.axelsson@intinor.se>
+Date:   Tue Mar 20 19:12:23 2012 +0200
+
+    Add support for limelight authentication
+
+commit 630c8db7d1ee2889d0c26a77d95050c01caf5d5a
+Author: Martin Storsjo <martin@martin.st>
+Date:   Tue Oct 30 09:09:25 2012 -0700
+
+    Add adobe authentication support
+    
+    From: Sergiy <piratfm@gmail.com>
+    
+    To use this, add flashver=FMLE/3.0\20(compatible;\20FMSc/1.0)
+    and pubUser=<username> pubUser=<password> to the RTMP url.
+    
+    This should both work for generic adobe authentication, and for
+    publishing to akamai.
+
+commit a9282329c3be3bb95f31137867fad9920b682d6d
+Author: Martin Storsjo <martin@martin.st>
+Date:   Wed May 30 22:07:23 2012 +0300
+
+    Allocate the channel arrays dynamically
+    
+    This avoids having to allocate space for all theoretical channels
+    if most of them aren't used. This drops the size of the full
+    RTMP struct from over 1200 KB to 16 KB (on 64 bit), and as long as
+    only channels with a low number are used, the amount of total
+    allocated memory stays far below what it was before.
+
+commit 0fb1d9936fb25f0755bb8b4afc95db048efe4526
+Author: Martin Storsjo <martin@martin.st>
+Date:   Wed May 30 22:06:57 2012 +0300
+
+    Free skipped packets in RTMP_GetNextMediaPacket
+
+commit 4a08069f086b68e99f33e931583148f4090960a3
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon May 21 23:52:11 2012 +0300
+
+    Use CRLF newlines consistently for all HTTP POST headers
+
+commit 91921dda7002ea8ffed9dfb74ad2913dfdd0b1ed
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon May 21 18:17:32 2012 +0300
+
+    Refill if HTTP_read indicated it needs more data
+    
+    HTTP_read wants to skip past the first payload byte, so
+    it actually needs to have at least 144 + 1 bytes buffered.
+    
+    This also avoids relying on the magic 144 byte constant altogether,
+    which could easily break if servers include less reply headers.
+
+commit 4ded9e053744e54286ab9af4e9657f5926a79a2c
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon May 21 18:17:31 2012 +0300
+
+    Don't require 144 bytes to be buffered before proceeding with HTTP_read
+    
+    This makes the code more flexible, if servers were to use
+    smaller headers.
+
+commit 895392a7161ceb37ac32b3fb4a910b350361b13f
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon May 21 18:17:30 2012 +0300
+
+    Buffer more data before returning successfully from HTTP_read, if needed
+    
+    This fixes issues if the http header and the payload data
+    are sent in separate packets (as they normally are), and the
+    buffer contains the full header but none of the payload.
+
+commit 8e527f61afbcb72eb7d8ae1f507765cdc2df2785
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon May 21 18:17:29 2012 +0300
+
+    Add null termination to buffers before using strstr
+
+commit 002ef6f6be2bbdf852ff64ab6981d709435a9045
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun May 20 23:37:35 2012 +0300
+
+    Support rtmps in rtmpsrv
+
+commit 6df3b1f2015f928d74a675bda542c354b893c2c2
+Author: Martin Storsjo <martin@martin.st>
+Date:   Tue Oct 30 08:57:43 2012 -0700
+
+    Add functions for doing server side TLS initialization
+
+commit f14b6ac18d779cfb1431c59344bd59a0b0445e08
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun May 20 23:36:58 2012 +0300
+
+    Replace hardcoded constants and comments with proper named constants
+
+commit d70c3f677d3d80763adf54c4e1329c57ed8af3ba
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sun May 20 23:36:57 2012 +0300
+
+    Allocate the RTMP struct dynamically
+    
+    This struct is over 1 MB in size, and doesn't fit on the stack
+    on OS X.
+
+commit 294135e6eafeb1ac338ac4bb11ebd5ef62c748b9
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 08:50:34 2012 -0700
+
+    Cleanup prev commit
+
+commit b77a7dc719f8b04274db91f6344f4358a78d9c5f
+Author: goggle1 <goggle1@163.com>
+Date:   Tue Oct 30 08:47:19 2012 -0700
+
+    Handle AMF_ECMA_ARRAY and AMF_STRICT_ARRAY objects
+
+commit 1d07cfa60402ace8472f4661112595f1fe661913
+Author: Matthew Garrett <mjg59@srcf.ucam.org>
+Date:   Sun Jul 8 16:26:14 2012 -0400
+
+    Fix socks support for SetupURL
+    
+    SetupURL assigns sockshost but never parses the data. This patch factors
+    the code out from SetupStream into a common function and adds it to
+    SetupURL.
+
+commit a312ac7770207bd7d07725c1aef43725206e803a
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 08:41:49 2012 -0700
+
+    Fix compat with PolarSSL >= 1.1.0
+
+commit dc1ddd3b3f567c036f6909af7f1bfdc135331439
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 08:28:15 2012 -0700
+
+    Fix rare infinite loop on EOF
+    
+    reported by Matt Robison <rtmpdump@nerdoftheherd.com>
+
+commit 75a6167863bc415845b9130d6f8f437cbdc185f7
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Oct 30 08:20:14 2012 -0700
+
+    Fix bogus optarg refs in prev commit
+
+commit 3fcbcb9a0bae6de03401f32939d3d243cdd7b865
+Author: Bastien Nocera <hadess@hadess.net>
+Date:   Thu Jul 19 17:22:03 2012 +0100
+
+    Make rtmpgw handle full RTMP URLs with "-i"
+    
+    or --url. Just as rtmpdump and librtmp already can.
+
+commit 87d47b876f818fe5c949e08c699238bc22a3c7b1
+Author: Bastien Nocera <hadess@hadess.net>
+Date:   Tue Oct 30 08:16:36 2012 -0700
+
+    Make rtmpdump handle full RTMP URLs with "-i"
+
+commit e0056c51cc1710c9a44d2a2c4e2f344fa9cabcf4
+Author: Ulrik Dickow <u.dickow@gmail.com>
+Date:   Tue Jul 24 17:17:26 2012 +0200
+
+    Add option --realtime (-R) to rtmpdump to disable the BUFX hack
+
+commit 603ff20e9e717a70b5b0c011f3413cf376d0c2f6
+Author: Ulrik Dickow <u.dickow@gmail.com>
+Date:   Thu Jul 26 04:57:23 2012 -0700
+
+    Add .gitignore to ignore generated files
+
+commit 7340f6dbc6b3c8e552baab2e5a891c2de75cddcc
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Thu Mar 8 23:19:45 2012 -0800
+
+    Cleanup prev commit, drop gcrypt support
+
+commit eea470fa5f9a5481a36dedd257549595ef7480d6
+Author: Martin Storsjo <martin@martin.st>
+Date:   Thu Mar 8 23:10:11 2012 -0800
+
+    Add support for building with gnutls with nettle as backend
+
+commit 2ad1d5d133a46ceeaaa05c9375e293f332871f3b
+Author: Josh Allmann <joshua.allmann@gmail.com>
+Date:   Fri Feb 24 13:46:59 2012 -0800
+
+    Fix upper bound check in AMF_GetProp
+
+commit adb77ff4d72cea92b7c307ccb64e9aa930d866da
+Author: Joshua Allmann <joshua.allmann@gmail.com>
+Date:   Fri Feb 24 13:44:29 2012 -0800
+
+    Remove extra object end tag in Connect reply
+
+commit 4e06e218e230a86608637b613499984703a342cf
+Author: Antti Ajanki <antti.ajanki@iki.fi>
+Date:   Thu Dec 22 17:54:10 2011 -0800
+
+    Support decoding AMF_XML_DOC
+    
+    MF_XML_DOC data is an XML document which is encoded similarly to a
+    long string.
+
+commit 5d03a4f0d6216da92830306436eae7eb318d5115
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Mon Nov 14 16:17:27 2011 -0800
+
+    Fix log messages
+
+commit 45556fb3b372402d7bd5235832176f58dede90ae
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Nov 14 16:12:26 2011 -0800
+
+    Fix mismatched format string conversions
+
+commit 949da84ab1f659597d6e7fa1ef0ab8fc1ca8e246
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Nov 14 16:11:13 2011 -0800
+
+    Tell gcc about log format strings
+
+commit 83e701eef0d7947713280fe3e7561bed1e7195f5
+Author: Martin Storsjo <martin@martin.st>
+Date:   Mon Nov 14 16:09:26 2011 -0800
+
+    Fix missing log message parameter
+
+commit 30fcf46fc82f96ca41b710fc38bbc15f2489795e
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Nov 8 02:14:21 2011 -0800
+
+    Check for malloc failure in prev commit
+
+commit 1c77ff43439068981d2ad9872952922a1ee37f89
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Nov 8 02:13:14 2011 -0800
+
+    Calculate tcUrl length
+
+commit 9df7959a71ec33cc9c83c9d3ef25c17b1c527f0e
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Nov 8 02:05:01 2011 -0800
+
+    Spell Referer according to RFC1945
+
+commit 90799efbb67f415ff930d68905e8267d5aa5dc4e
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Nov 8 02:04:01 2011 -0800
+
+    Increase tcUrl buffer size
+
+commit b3467069ad7c26d748ca13ce0ee88a41f85b22dd
+Author: Jeff Johnson <jeff@rogueamoeba.com>
+Date:   Mon Nov 7 11:43:26 2011 -0800
+
+    Fix getting swf hash with https URLs
+
+commit c90c05892cbaebfb1b2095759597d9fb38238c64
+Author: KSV <faltuvistor@yahoo.co.in>
+Date:   Mon Nov 7 11:38:27 2011 -0800
+
+    Fix bytes-received report
+
+commit 60218d0af0f4bd683ecdebe49986f188820cf8ce
+Author: Kirill Zorin <cyril.zorin@gmail.com>
+Date:   Fri Sep 30 13:38:23 2011 -0400
+
+    fixed undefined behaviour due to union assignment
+
+commit 6230845ab0fba07289d4b2d9b97269e4b2d90766
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Sun Sep 25 03:07:14 2011 -0700
+
+    PolarSSL support now requires version 1.0.0.
+
+commit c58cfb3e9208c6e6bc1aa18f1b1d650d799084e5
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Thu Aug 11 18:02:10 2011 -0700
+
+    Add RD_NO_CONNECT return code for Connect failures
+
+commit a1114e09bf0d74ef1d575eb88f3aa36bc7c6d790
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Tue Aug 9 14:44:14 2011 -0700
+
+    Fix AVreplace for usherToken
+
+commit c528451068de033d7cc76eb1c5a606c10215fcfb
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Wed Aug 3 11:46:07 2011 -0700
+
+    Fix <arpa/inet.h> include order
+
+commit 8880d1456b282ee79979adbe7b6a6eb8ad371081
+Author: Chris Larsen <clarsen@euphoriaaudio.com>
+Date:   Tue Aug 2 12:33:44 2011 -0400
+
+    Unexpected BW Response Fix
+    
+    Bug: SendCheckBWResult sends an invalid bw response due to casting issues
+    from a double to an int.
+
+commit f1abda046ca5a3f1efa63033c542e686b43dbcf3
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Sun Jul 31 13:21:12 2011 -0700
+
+    Cleanup previous commit
+
+commit 024d201c36e1b40f4f4d473e87d405e1b411230f
+Author: KSV <faltuvisitor@yahoo.co.in>
+Date:   Sun Jul 31 12:33:46 2011 -0700
+
+    Justin.TV usherToken detection
+
+commit ec422962d58b8e0d9bfcf0af6e450e0e349947da
+Author: Scott D. Davilla <davilla@xbmc.org>
+Date:   Fri Jul 29 11:26:35 2011 -0700
+
+    Darwin dylib updates
+    
+    Bring in line with current practice for Darwin dynamic libs
+
+commit b627335dc37fd5265ac6d23a441ee2d89ab503c8
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Fri Jul 22 18:06:27 2011 -0700
+
+    Plug potential memleak
+    
+    Reported by Reijo Tomperi <aggro80@users.sourceforge.net>
+
+commit 530d02fccf24f98e2e318418b2fa3e3420056fda
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Fri Jul 22 18:04:05 2011 -0700
+
+    Fix MDH_free() for PolarSSL
+    
+    Reported by Reijo Tomperi <aggro80@users.sourceforge.net>
+
+commit 159a06ebe6d82ef20f2c77c497d55af00d2e0b78
+Author: Martin Storsjo <martin@martin.st>
+Date:   Fri Jul 15 13:46:03 2011 +0300
+
+    Don't try to close an already closed socket
+    
+    This could happen if WriteN() (called within SendBytesReceived())
+    failed.
+
+commit 060206d121657d7e45c01ac022dd071c877b4caa
+Author: Martin Storsjo <martin@martin.st>
+Date:   Fri Jul 15 13:46:02 2011 +0300
+
+    Check the return value from RTMP_SendBytesReceived()
+    
+    This avoids double frees in RTMP_Close(), if the
+    RTMP_SendBytesReceived() call failed, which earlier led
+    to RTMP_ReadPacket() writing back an already freed buffer
+    (freed by RTMP_Close() within WriteN()) into m_vecChannelsIn.
+
+commit 9931c44867d157621ae10cf489ba336091dfab6b
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sat Apr 30 14:30:01 2011 +0300
+
+    Generate and install an import lib for the built DLL
+
+commit 749018b7c7c4e0090ea17c104dc094ab74326c08
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sat Apr 30 14:30:00 2011 +0300
+
+    Create the SODIR, too
+    
+    When SYS=mingw, this differs from LIBDIR.
+
+commit ed99ad05b34031fac74230760c77d4d1a6a9e706
+Author: Martin Storsjo <martin@martin.st>
+Date:   Sat Apr 30 14:29:58 2011 +0300
+
+    Remove the generated pkg-config file on make clean
+
+commit a2fb387404cb0da99cf439d58478fff701398700
+Author: Howard Chu <hyc@highlandsun.com>
+Date:   Thu Jul 21 17:31:14 2011 -0700
+
+    Regenerate HTML docs, minor tweaks
+
+commit dc762e41a090b5c238bd7daedab13def69eb140b
+Author: toine512 <toine512@gmail.com>
+Date:   Thu Jul 21 17:10:13 2011 -0700
+
+    Squashed commit of the following:
+    
+    commit 84b160fdc8e6aaff9b5b214d90e8f002cc4185dd
+    Author: toine512 <toine512@gmail.com>
+    Date:   Wed Jul 20 23:09:26 2011 +0200
+    
+        Updates man .. again
+    
+    commit 717c562b844595f5b24da268a5f5203d921ebc89
+    Author: toine512 <toine512@gmail.com>
+    Date:   Wed Jul 20 21:00:44 2011 +0200
+    
+        More updates in man files, regenerating HTML files needed
+    
+    commit 8196cf03b2ff7b9483166302bf79a0760fed2772
+    Author: toine512 <toine512@gmail.com>
+    Date:   Wed Jul 20 20:42:41 2011 +0200
+    
+        Updates ChangeLog
+    
+    commit 7a6931cffd0ffd2d0997ffed2bd7609e9a043387
+    Author: toine512 <toine512@gmail.com>
+    Date:   Wed Jul 20 20:37:40 2011 +0200
+    
+        Updates man files, regenerating HTML files is needed
+    
+    commit 1cb67af20bb4085b87123299956c6b4d2d2b1484
+    Author: toine512 <toine512@gmail.com>
+    Date:   Wed Jul 20 20:03:16 2011 +0200
+    
+        Implements Justin.tv support (NetStream.Authenticate.UsherToken)
+
+commit c28f1bab7822de97353849e7787b59e50bbb1428
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 17:24:33 2011 -0700
+
+    v2.4 changes
+
+commit 3121324046e4ca1934e7e28293fc8326475d5053
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 17:22:43 2011 -0700
+
+    Version bump
+
+commit 4028a5aa7f72cac44a62b4aac596ff3c82e6e019
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 17:19:25 2011 -0700
+
+    Additional credit for RTMPE 9 keys
+
+commit be0590a86af80df528e3556b86f110ad4b5cbb27
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 16:41:28 2011 -0700
+
+    Add LIB_RTMP macro
+    
+    Allows changing to static linking on the cmd line
+
+commit d1f14b147e03aa17c968b96d6573320410a5252c
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 16:12:39 2011 -0700
+
+    Add RTMPE type 9 handshake signature
+
+commit 0e9b4917c1163227c48cd83e081aa972ed7d3111
+Author: Howard Chu <hyc@symas.com>
+Date:   Mon Jul 11 14:41:11 2011 -0700
+
+    Revert "Drop back on the handshake version, avoid rtmpe 9"
+    
+    This reverts commit aa2825fbb1d1f70652d558a730baed28149ebbdd.
+    
+    Conflicts:
+    
+    	librtmp/handshake.h
+
+commit e09abc08504988e5c286ffc9c92da3ba76f95a20
+Author: Compn <tempn@twmi.rr.com>
+Date:   Tue Jul 5 09:48:23 2011 -0400
+
+    add -shared to mingw ldflags, fixes compilation error
+    patch by Martin Storsjo
+
+commit 6155179b296f9749f713bb9bf47e9ca1fdb1a201
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 7 19:33:28 2011 +0000
+
+    Use symbolic constants for packet types. From Peter Miller @ opensource.org.au
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@568 400ebc74-4327-4243-bc38-086b20814532
+
+commit 041cf3f2c927b26dc4b27b5e802fbb89362ea3e2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 7 19:11:13 2011 +0000
+
+    Handle multiple sessions at once (ugly)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@567 400ebc74-4327-4243-bc38-086b20814532
+
+commit 495e1e64106f10a7a1c15f0e2f870a02aa90605c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 7 19:07:31 2011 +0000
+
+    Handle Play.PublishNotify like Play.Start
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@566 400ebc74-4327-4243-bc38-086b20814532
+
+commit ac1843db901184bef349615e3b67d7d2fcebdb7f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 22 15:13:18 2011 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@563 400ebc74-4327-4243-bc38-086b20814532
+
+commit aa2825fbb1d1f70652d558a730baed28149ebbdd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 19 23:32:53 2011 +0000
+
+    Drop back on the handshake version, avoid rtmpe 9
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@562 400ebc74-4327-4243-bc38-086b20814532
+
+commit a1bcab1da064cca8a534d26970333220b57a72f0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 16 12:11:21 2011 +0000
+
+    Fix rtmpt read hangs
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@561 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0a219ffeeb0094111fd00c509fce3ddd6eba2de2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 14 06:48:09 2011 +0000
+
+    Bump up play command buffer sizes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@560 400ebc74-4327-4243-bc38-086b20814532
+
+commit 25447a0f675cc6e9eefc8eb420ad3a2725be8ab1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 10 14:33:32 2011 +0000
+
+    Fix typos in prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@559 400ebc74-4327-4243-bc38-086b20814532
+
+commit bca1ef01727cac659f7ac171c791490efe4e48d6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 10 14:30:06 2011 +0000
+
+    Add Libs.private to pkgconfig for Windows
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@558 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8c713f4c5c8e72369b48d15772e19d1c9ebd5a19
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Feb 25 05:51:40 2011 +0000
+
+    Fix FLV timestamps during resume
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@557 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1379a2c0d22f238d97970a7e7420287a9bd794de
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Dec 24 22:35:35 2010 +0000
+
+    Fix infinite loop on Error/Close
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@554 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9ca7e22d94c6e07e8ef05acbf636809a5914f50c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Oct 26 23:51:10 2010 +0000
+
+    Timeout fix from Antti Ajanki
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@552 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8afb3681407a0a83dcb1fec449b83854da440738
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Oct 8 07:45:54 2010 +0000
+
+    Log error message for unsupported SWF Verification types
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@551 400ebc74-4327-4243-bc38-086b20814532
+
+commit 59ca19036ed45667b08d98f09e4d4a7a727b77b3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Aug 13 20:34:58 2010 +0000
+
+    Less case-sensitive check for Content-length: header
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@550 400ebc74-4327-4243-bc38-086b20814532
+
+commit 08bdebed5423602d195fa981b3f2663e62820677
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Aug 13 20:05:35 2010 +0000
+
+    Substitute libdir in pkgconfig file
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@549 400ebc74-4327-4243-bc38-086b20814532
+
+commit eb806247dc8eab25d8a675a4f633d3feaf2b2045
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Aug 10 06:41:50 2010 +0000
+
+    More dynlib tweaks
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@548 400ebc74-4327-4243-bc38-086b20814532
+
+commit 13798268e10fc8c56eecf5fce297375f7fca1526
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Aug 9 21:46:31 2010 +0000
+
+    Fixes for Darwin - use dylib, not bundle for shared lib
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@547 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2340f0e27cd21d624d5f915fc42182750be6fca6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jul 12 08:20:04 2010 +0000
+
+    MacOSX/Darwin shared library flags
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@546 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5a3d6003a9745595583015c5b3b24e7bea818790
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jul 8 11:11:47 2010 +0000
+
+    Fix install target
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@545 400ebc74-4327-4243-bc38-086b20814532
+
+commit 24f7e724fc10d737a0f14c7741711b6b542c9d45
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jul 8 10:38:33 2010 +0000
+
+    Don't link explicitly against static library
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@544 400ebc74-4327-4243-bc38-086b20814532
+
+commit eef87483b92036a1631c98c9c85dc3cae66411ee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jul 5 20:17:16 2010 +0000
+
+    Update XBOX/XBMC support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@543 400ebc74-4327-4243-bc38-086b20814532
+
+commit da78eba764eda23fb3bf9aa91bd6c5fee1839932
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jul 5 20:16:55 2010 +0000
+
+    Remove obsolete XBOX defs
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@542 400ebc74-4327-4243-bc38-086b20814532
+
+commit f1c4f0ed07659cbeae4ffaa78ca8cce7500afa58
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jul 5 20:07:39 2010 +0000
+
+    Hide strtime()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@541 400ebc74-4327-4243-bc38-086b20814532
+
+commit c41568f57bec297581e8508a7e6a3d1e470dc81d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jul 3 10:28:57 2010 +0000
+
+    Update from prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@539 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8a5901c8a74280c898deb4ebf1a2f5d6f68bce42
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jul 3 10:25:48 2010 +0000
+
+    Document the escape coding used for special characters in values
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@538 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6556b9f9328acb1199dc1cc3f22fa82c86b51c8a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jul 1 12:00:43 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@537 400ebc74-4327-4243-bc38-086b20814532
+
+commit 272a91d06d71c2a326996f62797ed9ab42f69859
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 22:34:59 2010 +0000
+
+    zlib dependency is only when CRYPTO is enabled
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@536 400ebc74-4327-4243-bc38-086b20814532
+
+commit a8f8ee301afd417221462be83c04dfaa8309037c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 20:01:12 2010 +0000
+
+    Default to SYS=posix, parent Makefile may not have run
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@532 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8a9fc25b7c3d0e908e65dd892a3a0a6d051a66b9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 19:57:38 2010 +0000
+
+    Also delete shared libs on clean
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@530 400ebc74-4327-4243-bc38-086b20814532
+
+commit 54ebbe424068ebd960abbeea21680d29570d2d84
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 19:51:21 2010 +0000
+
+    2.3 notes about shared library
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@528 400ebc74-4327-4243-bc38-086b20814532
+
+commit bd22d7578475b2b0dc04c252706704b0fb5dcb54
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 19:41:52 2010 +0000
+
+    Add mingw DLL install support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@527 400ebc74-4327-4243-bc38-086b20814532
+
+commit cccc70ef9cfc7b714b629f1d4a7b3648507f2ca0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 19:02:53 2010 +0000
+
+    Add -lz and MinGW support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@526 400ebc74-4327-4243-bc38-086b20814532
+
+commit c7b944888a76c78124c1bec9c63ee90f517c3049
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 30 18:52:14 2010 +0000
+
+    Bumping version to 2.3 to highlight shared lib support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@525 400ebc74-4327-4243-bc38-086b20814532
+
+commit 32a753b207c88a2470b7574da62399d792ba244a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 29 21:05:04 2010 +0000
+
+    Only send CheckBW request once
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@524 400ebc74-4327-4243-bc38-086b20814532
+
+commit 602b76cf8d046b46e7c7479b498e118530e4de12
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 29 07:40:13 2010 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@523 400ebc74-4327-4243-bc38-086b20814532
+
+commit 842f500ffc2c673bf37dfd3e7664412936219454
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 29 01:39:49 2010 +0000
+
+    Cleanup prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@522 400ebc74-4327-4243-bc38-086b20814532
+
+commit 55d4a10abc477494a0e9abc3c321ddad96b352a2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 29 01:31:17 2010 +0000
+
+    Fix tcUrl generation, free it on close if needed
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@521 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8a8590a40e4d3e177738589636530e64b271b7c5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 29 01:09:21 2010 +0000
+
+    Skip repeated spaces between URL options
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@520 400ebc74-4327-4243-bc38-086b20814532
+
+commit ee4217a1dc3ed52753d4a0baaa47c54171daa7c6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Jun 27 19:51:48 2010 +0000
+
+    Check for duplicate invocations
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@519 400ebc74-4327-4243-bc38-086b20814532
+
+commit 385b6444291826873d092a87ac7c359d65336139
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jun 26 21:03:02 2010 +0000
+
+    Notes for 2.2f
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@518 400ebc74-4327-4243-bc38-086b20814532
+
+commit a0e1f5c31916fed3cff97b27ad84d71f2d8e26dc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jun 25 20:28:41 2010 +0000
+
+    Fix bogus switch statement
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@517 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8ebaf39105597358ecd91f4098d16cb0fc043785
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 24 19:20:52 2010 +0000
+
+    Fix skipping extension
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@516 400ebc74-4327-4243-bc38-086b20814532
+
+commit 44d2febb397664fae37846f479e9908bd2531918
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 24 19:18:29 2010 +0000
+
+    m_read.buf cannot be freed if we were still searching for the header
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@515 400ebc74-4327-4243-bc38-086b20814532
+
+commit 885cd3da7afa5237f7433e267c85652855fdead3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 22 14:19:08 2010 +0000
+
+    casting hbuf to unsigned doesn't seem to work, just declare it unsigned
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@514 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8cab80ed709e15475ee086bcf699cc2af3e48a13
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jun 19 18:57:38 2010 +0000
+
+    Add ping/pong msg, from mybiiter@gmail.com. (Untested. Used with "ustream"?)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@513 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8b43afa09ddc40c3a7743624c12d595656d17f45
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 17 19:13:44 2010 +0000
+
+    Simple rules for shared lib, v2.2f
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@512 400ebc74-4327-4243-bc38-086b20814532
+
+commit a794fffea0da57cbaeb78770399607fd00f69469
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 17 18:42:04 2010 +0000
+
+    bump libversion to 2.2f
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@511 400ebc74-4327-4243-bc38-086b20814532
+
+commit a5f08e74bf858623830c3fb0f61a500a7d75cd20
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 17 18:38:04 2010 +0000
+
+    Add RTMP_Socket(), RTMP_Pause(). Addresses the last remaining
+    direct references into RTMP struct from ffmpeg, should be able
+    to write version-independent apps now.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@510 400ebc74-4327-4243-bc38-086b20814532
+
+commit 39179f278bc0ca1560537d0ed4520d41123a2925
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Jun 6 07:17:29 2010 +0000
+
+    Always use .flv extension for output
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@509 400ebc74-4327-4243-bc38-086b20814532
+
+commit f70f6a787ad342bac667608445521ad2c96b7dc7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 3 17:03:37 2010 +0000
+
+    Regenerate
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@508 400ebc74-4327-4243-bc38-086b20814532
+
+commit 720a0d454d16635e2dd7f09d24b5375959eefdf5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 3 17:02:11 2010 +0000
+
+    formatting/typos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@507 400ebc74-4327-4243-bc38-086b20814532
+
+commit e103e982d63741956da240ac64cf7031d9dcdd58
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 3 16:59:46 2010 +0000
+
+    Note librtmp is LGPL
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@506 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8d9e9649ab51cc36b31c48545e5fe3783003cff4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jun 3 16:50:30 2010 +0000
+
+    Update FSF address in license notice
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@505 400ebc74-4327-4243-bc38-086b20814532
+
+commit ffdb7755b0f5bc3b5b9d2e3c45b7d3076d09d368
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 2 21:12:19 2010 +0000
+
+    move TRUE/FALSE defs to public header, just in case
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@504 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1b3b8cd929badfa2605e8e96d1ab643744738a28
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 2 16:52:55 2010 +0000
+
+    Kill all use of bool, just use int
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@503 400ebc74-4327-4243-bc38-086b20814532
+
+commit 20021ebd340031cd1e6da8adef9d0b22b6fdaae8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jun 2 16:15:24 2010 +0000
+
+    add XLIBS macro
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@502 400ebc74-4327-4243-bc38-086b20814532
+
+commit aca5cefd93140251ba41fc652c42de6796c263a3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 1 13:03:14 2010 +0000
+
+    drop unused MF variable
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@501 400ebc74-4327-4243-bc38-086b20814532
+
+commit 80b04b78acc05cd48bc057446b46414a6de5dbf9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jun 1 13:01:05 2010 +0000
+
+    drop $(MAKEFLAGS), unnecessary
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@500 400ebc74-4327-4243-bc38-086b20814532
+
+commit 44b1cf4909dca25a6065c6046c05478718ab6baa
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 31 22:53:34 2010 +0000
+
+    RTMP_Write buf is const
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@499 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4464675526d8076c6a77bc49fefae9771a481317
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun May 30 21:14:28 2010 +0000
+
+    Fix RC4 teardown for GnuTLS/gcrypt
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@498 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7d62819627bbbbf7a85946b83301bba89f28c9b1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 07:56:12 2010 +0000
+
+    Note RTMP_EnableWrite
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@494 400ebc74-4327-4243-bc38-086b20814532
+
+commit 45126f414ddce51b4a430a51331bc85f4b7be9c7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 07:39:31 2010 +0000
+
+    Tweak install vars
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@492 400ebc74-4327-4243-bc38-086b20814532
+
+commit f012c97232754a9d7d9a04d38f4aea983535286b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 07:34:53 2010 +0000
+
+    Add install targets for tools and docs
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@491 400ebc74-4327-4243-bc38-086b20814532
+
+commit c579bdf7f7cdcd14318e55a196e6bd789c20b199
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 07:26:00 2010 +0000
+
+    Makefile tweaks, use SYS= macro instead of platform targets
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@490 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9804899339ff60d17e4ff266f41dc095e6109fbe
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 06:55:46 2010 +0000
+
+    2.2e notes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@489 400ebc74-4327-4243-bc38-086b20814532
+
+commit c3e7022b1d3fd48a7e23df62cbde7c7e2b5961f2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 29 06:46:27 2010 +0000
+
+    Bump to version 2.2e
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@488 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9fd80be9cadff763b8e6fc1a0d198dbd8d0871ed
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri May 28 01:37:42 2010 +0000
+
+    Add RTMP_EnableWrite() for publishing instead of reading
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@487 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9dd9b2534f7f1701c6088d20956d9cc64ddd637e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu May 27 17:34:59 2010 +0000
+
+    Finally fix the half-assed request/result queue
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@486 400ebc74-4327-4243-bc38-086b20814532
+
+commit 97ec4869cb2edac9c1f1e74f13147575fa4df957
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed May 26 15:16:25 2010 +0000
+
+    Read buffer fixes: We overallocated the buf by 4 bytes, but the result
+    may not have needed the extra space. Also, don't return without reading
+    at least one packet. (Alternative: return early, but set EAGAIN...)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@485 400ebc74-4327-4243-bc38-086b20814532
+
+commit ff2415d14d7bd59311a60318d9e577530e69b7c8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 24 19:43:48 2010 +0000
+
+    Just return 1 packet's worth of data at a time from RTMP_Read()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@484 400ebc74-4327-4243-bc38-086b20814532
+
+commit db27d27989c8cf555be5af7862285bf032ccbcce
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 24 13:29:05 2010 +0000
+
+    Cleanup declaration
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@483 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9e87a3ba390b7fcb372ceac09afdd8d6b2c601ab
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 24 13:28:35 2010 +0000
+
+    Revert unintended commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@482 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2f342f9d034b0a77c9ddc63ee5d236ac79fde564
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 24 13:21:44 2010 +0000
+
+    Give up dataType search if we run out of buffer
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@481 400ebc74-4327-4243-bc38-086b20814532
+
+commit 31bb4f31bfd73423706e7cc27748334680828ebf
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon May 24 13:02:37 2010 +0000
+
+    Use metadata to set dataType, to help finish dataType search earlier
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@480 400ebc74-4327-4243-bc38-086b20814532
+
+commit 492983a21b8a8e4938f616430dd10fc9efc8b6d6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue May 11 03:49:27 2010 +0000
+
+    Fix RTMP_Read, return 0 on EOF, not -1
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@477 400ebc74-4327-4243-bc38-086b20814532
+
+commit cb26e5cef95a0267d7f50f0b9778bb2ccfb74322
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed May 5 23:08:19 2010 +0000
+
+    Fix swfinfo path on Xbox
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@474 400ebc74-4327-4243-bc38-086b20814532
+
+commit 72af6c79a7bd9ac135b6f37548020454104ceccb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed May 5 20:16:28 2010 +0000
+
+    Document what we know about Stream BufferEmpty and BufferReady messages
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@473 400ebc74-4327-4243-bc38-086b20814532
+
+commit e78ec5e6cc1b0d1aed1977c681b4eaa07c27c507
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed May 5 08:00:51 2010 +0000
+
+    Very rudimentary library overview, read rtmp.h for more details
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@472 400ebc74-4327-4243-bc38-086b20814532
+
+commit a9d8e96d91580308360d8f43a61abd24098d26f2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed May 5 05:47:18 2010 +0000
+
+    Don't use the BufferEmpty toggle trick by default in librtmp,
+    but set it by default in rtmpdump
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@471 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9ff367350e4acb13e2b582ac00680807d55ec8ed
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue May 4 21:09:42 2010 +0000
+
+    Whitespace in prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@470 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7a7b6a110e18bee1af9b27964fc0d33e93da371d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue May 4 20:16:00 2010 +0000
+
+    Fix rtmpt clientID was not NUL-terminated
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@469 400ebc74-4327-4243-bc38-086b20814532
+
+commit 11e5437d791f86743ffd501d75417b4bbdfa6c15
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue May 4 16:50:35 2010 +0000
+
+    More XBOX cleanup, just use _WIN32 which is defined on both
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@468 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8276e7adc1324ce4438430b58098f65c207d4dea
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun May 2 15:46:06 2010 +0000
+
+    Update docs for rtmpts
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@466 400ebc74-4327-4243-bc38-086b20814532
+
+commit cbba368fb7124a251f99c5386536ede0c405d3d1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun May 2 15:43:03 2010 +0000
+
+    Looks like rtmps doesn't tunnel by default, so add rtmpts
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@465 400ebc74-4327-4243-bc38-086b20814532
+
+commit c9627baca918f81b66acb2538575e4861da4e566
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat May 1 11:00:04 2010 +0000
+
+    XBOX compatibility patches (Mostly same as WIN32)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@464 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0910c5dc270bb35b3b7e1f2552dca2bb25204fba
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Apr 30 03:09:57 2010 +0000
+
+    Add --playlist option
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@459 400ebc74-4327-4243-bc38-086b20814532
+
+commit e683f329f3f81b959bb48253edc6df4cdbd5d5a0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Apr 30 00:31:59 2010 +0000
+
+    Updates for 2.2d
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@458 400ebc74-4327-4243-bc38-086b20814532
+
+commit eff63314d1f1f42ba121f42425df258df37e7f5d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Apr 30 00:01:52 2010 +0000
+
+    Clarify NO_SSL initialization
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@457 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5e37ef0b36d5c60514b2c2164ce41ea452e3ee75
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 29 23:47:30 2010 +0000
+
+    Add -DNO_SSL option for omitting SSL support (just use rtmpe, no rtmps)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@456 400ebc74-4327-4243-bc38-086b20814532
+
+commit e4e4b0b32c732a1448707d3450d6080166cc15e2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 29 23:33:33 2010 +0000
+
+    Don't strip suffix if prefix was already present
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@455 400ebc74-4327-4243-bc38-086b20814532
+
+commit 89d0b5c4067b0b9ca4570a76100de499a7010d38
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Apr 29 15:42:08 2010 +0000
+
+    Add support for polarssl, http://www.polarssl.org
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@453 400ebc74-4327-4243-bc38-086b20814532
+
+commit d05cd7e313cc7a627594fe488c11646d71e03e06
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 23:19:14 2010 +0000
+
+    More explicit OpenSSL check
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@450 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8eafde102eb184dded55dacf36f989454f2db316
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 23:12:46 2010 +0000
+
+    Check OpenSSL version
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@449 400ebc74-4327-4243-bc38-086b20814532
+
+commit 19a067fca5dbc5c8a4548fd6b04b3230acecb5f2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 12:04:34 2010 +0000
+
+    Add support for set_playlist command
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@448 400ebc74-4327-4243-bc38-086b20814532
+
+commit b2c095c4c91f35fcdd4f278910d547d2ca6d7604
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 11:31:16 2010 +0000
+
+    Restructure Link booleans into bitflags
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@447 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7db96c63ca3fb050522e73774228cde0634e9b7e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 11:30:39 2010 +0000
+
+    Tweak client version based on encryption status
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@446 400ebc74-4327-4243-bc38-086b20814532
+
+commit de822597115dba38d87575b74c729a138f79afee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 07:28:41 2010 +0000
+
+    Fix whitespace
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@445 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2d8035a20e8446cdf821febc8fda4768ac790906
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 24 07:22:32 2010 +0000
+
+    Fix: if playpath begins with '?' just use the remainder
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@444 400ebc74-4327-4243-bc38-086b20814532
+
+commit f02c0e2d0bf44f064b14745f23c4284359dcfec0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 21 02:38:16 2010 +0000
+
+    Drop unneeded Debug
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@443 400ebc74-4327-4243-bc38-086b20814532
+
+commit fe8a13506f3c03cde82f29bfc1d8a00663f88115
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 21 02:36:36 2010 +0000
+
+    More trivial cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@442 400ebc74-4327-4243-bc38-086b20814532
+
+commit db518c0039fea68f8cb4222c83fa25ccc55dfe6f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 21 02:26:00 2010 +0000
+
+    whitespace cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@441 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4091c99c0ce76b222c0d1d462de70545faca5c2e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 21 02:12:34 2010 +0000
+
+    Fix timestamps in FLV packets
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@440 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5351eb442a6b356b07bef50892b000d54db95e62
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Apr 20 12:21:21 2010 +0000
+
+    Fix digest offset computation, handshake versions
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@439 400ebc74-4327-4243-bc38-086b20814532
+
+commit f72d388bce3690b1ff2ad03d65c5e5962cfdb98d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 18 21:10:02 2010 +0000
+
+    Tweak pkgconfig libs
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@437 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5b40c0da3dac558964d9b2be67a23524ea79acff
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 18 19:53:20 2010 +0000
+
+    Windows - use ws2tcpip.h, drop our bogus socklen_t define
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@436 400ebc74-4327-4243-bc38-086b20814532
+
+commit cf1b6da5a322d80b70aa29412c622c76a07ad20d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 18 19:41:36 2010 +0000
+
+    Windows GNUTLS needs explicit -lgcrypt
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@435 400ebc74-4327-4243-bc38-086b20814532
+
+commit dab37842f721d870d67885db27e0bc567d25492e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 18 19:32:42 2010 +0000
+
+    Use winsock2.h, not winsock.h
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@434 400ebc74-4327-4243-bc38-086b20814532
+
+commit 554b59c6bc251fe4dc502a9bd0fca873c637056a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 18 19:22:40 2010 +0000
+
+    Set CROSS_COMPILE for ar
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@433 400ebc74-4327-4243-bc38-086b20814532
+
+commit 010d5bdc8133b314a5d20d8b2320c04200379eb8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 14 19:38:11 2010 +0000
+
+    v2.2c stuff. not much user-visible
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@430 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1127fab93e272466b50c37bf08d542d058d29399
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 14 18:58:14 2010 +0000
+
+    More cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@429 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5247bfe73dd9ed4f3881c209ef5c857cf46bdea7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 14 17:34:14 2010 +0000
+
+    C89 compatibility
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@428 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0a92a1e5521e44ebd633b156727c6fc8126255c7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 14 16:07:19 2010 +0000
+
+    Leave CRYPTO defined by default, use "make CRYPTO=" to turn it off.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@427 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7569112a1bf7a42449d870b937c62b990f79bbcf
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 11 05:04:18 2010 +0000
+
+    cleanup: dTime -> iTime
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@426 400ebc74-4327-4243-bc38-086b20814532
+
+commit cb6018831cbb45c4368a3d079cafe6c1961bbccc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Apr 11 05:02:58 2010 +0000
+
+    Fix pause debug msg
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@425 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4ee738a1e7e981a8941f51ead283b1a3b1ac2bdb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 10 14:05:20 2010 +0000
+
+    Rename default log handler
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@424 400ebc74-4327-4243-bc38-086b20814532
+
+commit de86e1010142aaba0ba62ebfc85cd8092f59a1c5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 10 13:49:04 2010 +0000
+
+    Add missing LogSetCallback
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@423 400ebc74-4327-4243-bc38-086b20814532
+
+commit 33c4e4c055a6e28d0c54d1047f0dfe85a8edb5b7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Apr 10 13:30:20 2010 +0000
+
+    Restructure logging, add log callback
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@422 400ebc74-4327-4243-bc38-086b20814532
+
+commit eb35c7172a6628823860c1dd6b352ac1d3ec90ce
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 7 07:34:37 2010 +0000
+
+    Fix prev commit - hashswf must always be present
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@421 400ebc74-4327-4243-bc38-086b20814532
+
+commit 628f72259f20a80df97fc1e8240deab2abb9e2ca
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 7 07:24:55 2010 +0000
+
+    Drop #ifdef CRYPTO from rtmp.h; apps have no way to know any more if CRYPTO
+    is defined or not
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@420 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1ee227296ad3496291e1bfbbb09835d394450b39
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 7 07:12:59 2010 +0000
+
+    Move -DCRYPTO to Makefile from rtmp.h
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@419 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5a26c69e5760ddd8e73a92315c2db2c7ce913858
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 7 06:56:05 2010 +0000
+
+    HashSWF depends on CRYPTO
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@418 400ebc74-4327-4243-bc38-086b20814532
+
+commit 170699a20420736b607a416e93be985d1fb2c5ac
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Apr 7 06:55:02 2010 +0000
+
+    include <stddef.h>
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@417 400ebc74-4327-4243-bc38-086b20814532
+
+commit a856e26d131b4e5f2e5cc72141dfd36c47401feb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 31 21:06:08 2010 +0000
+
+    releaseStream, FCpublish, FCunpublish get no _results
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@416 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1ffd941ccbfde410cf87d25a30c7a132d2d0e838
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 31 06:40:49 2010 +0000
+
+    cleanup sendplay log msg, plug m_read memleak
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@415 400ebc74-4327-4243-bc38-086b20814532
+
+commit 02272bac93be939989cdf1abe0644185e4f95e71
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 31 06:37:04 2010 +0000
+
+    Make sure install directories exist
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@414 400ebc74-4327-4243-bc38-086b20814532
+
+commit 21a925c9a030604a5240ad874d02f0a32e0098e0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 29 03:11:42 2010 +0000
+
+    <stdbool.h> isn't as standard as some people claim...
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@413 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5bafb8fa33fcbff6e2c15376f6613628aea95ca2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 29 02:39:30 2010 +0000
+
+    Silence prototype warnings
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@412 400ebc74-4327-4243-bc38-086b20814532
+
+commit a5d1abed7b5875bf9c698f6d212e11ecd2aa94dd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 28 20:17:00 2010 +0000
+
+    Check length for unescape
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@411 400ebc74-4327-4243-bc38-086b20814532
+
+commit b24e6c2e94115f7bf731bc2e8f967cefd86bf873
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 28 20:14:52 2010 +0000
+
+    Revert prev commit, use \xx for escaping spaces
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@410 400ebc74-4327-4243-bc38-086b20814532
+
+commit 493fdc399d2fd4a3a9fac579dc4ad8864294fcae
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 28 08:01:00 2010 +0000
+
+    Can't use URL coding for embedded spaces in SetupURL. Instead use TAB combos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@409 400ebc74-4327-4243-bc38-086b20814532
+
+commit c6f0e049fd24ce3e7c220ca6f988a25025caee8d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 28 06:45:20 2010 +0000
+
+    Cleanup tabs, URLdecode options in SetupURL
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@408 400ebc74-4327-4243-bc38-086b20814532
+
+commit bbaec8b6f22fccef7273063d552b7b8a74e33123
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 27 20:20:14 2010 +0000
+
+    All timestamps are 32 bit ints
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@407 400ebc74-4327-4243-bc38-086b20814532
+
+commit a430dbcb437ffa851e269d8ebe3a4234b665f8a4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 27 06:46:04 2010 +0000
+
+    Cleanup prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@406 400ebc74-4327-4243-bc38-086b20814532
+
+commit 18f3bf620a97bde394421e27e002b6e41e9ca700
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 27 05:35:04 2010 +0000
+
+    Option restructuring, allow most options to be passed along
+    with the RTMP URL, clean up
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@405 400ebc74-4327-4243-bc38-086b20814532
+
+commit 23fd58d34ba65175826c619097419569f189db62
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 26 21:07:03 2010 +0000
+
+    Use AVal for hostname and sockshost, don't allocate hostnames
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@404 400ebc74-4327-4243-bc38-086b20814532
+
+commit 095b021774cebf7087003cedc4a76a1ddee2f136
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 10:11:39 2010 +0000
+
+    Downgrade from FP9 handshake on plain RTMP and non-Adobe server
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@403 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8f7b11a6ab760365b865059efebff6aa2e18a3eb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 07:21:52 2010 +0000
+
+    Fix #undef CRYPTO case
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@402 400ebc74-4327-4243-bc38-086b20814532
+
+commit c81ee7ba6a635d0c4730d00b1c1f86b813ec8815
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 03:29:51 2010 +0000
+
+    Cleanup LogHex, just print 16 bytes per line
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@401 400ebc74-4327-4243-bc38-086b20814532
+
+commit 679c48930e788dc7b43d6cd7e39876ad6c4fb961
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 03:25:11 2010 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@400 400ebc74-4327-4243-bc38-086b20814532
+
+commit d7ea780a869b66f86b6cf303b0b5a7c5dfcda87f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 03:14:34 2010 +0000
+
+    Cleanup prev
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@399 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6fbf4260e7d9ec301cebba8493db6e721fcfb51d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 03:08:55 2010 +0000
+
+    Child process must exit if exec failed. (exec should never
+    fail unless your PATH is messed up)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@398 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7173d064270a9cf21ba26f4f2fe923ce8408f5dd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 25 03:06:12 2010 +0000
+
+    Abort on unrecognized options
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@397 400ebc74-4327-4243-bc38-086b20814532
+
+commit 178c6ce9b89a57ed06a9a08cae9ac585c9c80cda
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 24 18:43:30 2010 +0000
+
+    Fix buffer errors
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@396 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5a70d4caa84b64b3462a7be8eeb2173e7bfdc09a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 23 01:14:13 2010 +0000
+
+    Timestamp may be absolute or relative when read off the wire, but is
+    always absolute when we return a pkt to caller
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@395 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3e314e91924543d7b0e2eaab7c98c3a19a9a844a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 23 01:11:58 2010 +0000
+
+    delete packet->m_nInfoField1, it's just the timestamp
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@394 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6eb616cf4fc98187e55aec88cdf935b23d42d7ce
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 13:03:04 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@393 400ebc74-4327-4243-bc38-086b20814532
+
+commit 45b8a3f374fb782b751068277d94385a1a8dc865
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 10:30:55 2010 +0000
+
+    Cleanup prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@391 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5fdb88e5f76e278d08cc780674590c18804b71d2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 10:29:35 2010 +0000
+
+    Workaround $(MAKEFLAGS) bug in gmake 3.81
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@390 400ebc74-4327-4243-bc38-086b20814532
+
+commit 28b0246acbf48696679cd9c808ed54637618e07f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 09:48:14 2010 +0000
+
+    2.2b update
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@388 400ebc74-4327-4243-bc38-086b20814532
+
+commit a797bea97a12fc753d308f013308394b004870a6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 09:40:25 2010 +0000
+
+    v2.2b
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@386 400ebc74-4327-4243-bc38-086b20814532
+
+commit ceacf56288f6fcd174280c42a4ed3ad8d36188f2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 09:39:07 2010 +0000
+
+    Add accessors for debuglevel, libversion, ctrlC, to avoid external
+    programs depending on library internal variables.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@385 400ebc74-4327-4243-bc38-086b20814532
+
+commit 33442bce475751638b20010cedb4424cd7fbc53e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 05:59:14 2010 +0000
+
+    Add Requires: line for crypto lib
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@384 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3b74e1a0def077ce2004271a7304cf8250f25a8c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 05:47:30 2010 +0000
+
+    Add install target, create pkgconfig for install
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@383 400ebc74-4327-4243-bc38-086b20814532
+
+commit a79387daf4c79878a9d1ac12d093db2273264c1f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 03:38:13 2010 +0000
+
+    Check for valid socket before setting in fdset
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@382 400ebc74-4327-4243-bc38-086b20814532
+
+commit e95b01f7e9df67b36146226326bd6724eede16b8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 00:40:34 2010 +0000
+
+    Full debug for server handshake
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@381 400ebc74-4327-4243-bc38-086b20814532
+
+commit 96be720cb7d87efd4f19b453c672cb0bf991f48a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 22 00:31:44 2010 +0000
+
+    (ugly) add FP10 support for server handshake
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@380 400ebc74-4327-4243-bc38-086b20814532
+
+commit 75cb5cdd0219991bd928b5a0dc582e5c4cfe7ff3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 21 23:34:32 2010 +0000
+
+    Export RTMP_SendClientBW()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@379 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8e73241b0213d7c125cb9d013bd016c901229f6e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 21 21:15:06 2010 +0000
+
+    More fixes due to -r369
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@378 400ebc74-4327-4243-bc38-086b20814532
+
+commit 069f619cabf7bdaac390e3dcbe3ec192ccaf50e2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 21 20:58:11 2010 +0000
+
+    Fix init bug from -r369
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@377 400ebc74-4327-4243-bc38-086b20814532
+
+commit 75f82caf8179a32ddf189b89f67041e1094ab181
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 21 09:35:42 2010 +0000
+
+    Fix Win32 HOME location again
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@376 400ebc74-4327-4243-bc38-086b20814532
+
+commit cc5c05ee5c7b8ad436862e2b5b1b1034b4729140
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 20 21:49:21 2010 +0000
+
+    Fix typo for --auth
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@374 400ebc74-4327-4243-bc38-086b20814532
+
+commit 40e1338eddd40208ace6ae554f3840ab76ed33a6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 20 20:10:28 2010 +0000
+
+    GNU vs BSD make syntax issues
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@373 400ebc74-4327-4243-bc38-086b20814532
+
+commit 670cb5ddc6999f9454e1f67498bea2965c99f3b6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 20 10:01:37 2010 +0000
+
+    Update 2.2a notes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@370 400ebc74-4327-4243-bc38-086b20814532
+
+commit 47f11650b0649012f8c4173585d2396fe3bdd19f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 19 09:23:26 2010 +0000
+
+    Initialization fixes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@369 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8ed92c89489127057dd7c12406e78c6a7f811799
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 18 20:56:24 2010 +0000
+
+    Rename AMF_Log -> RTMP_Log, cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@368 400ebc74-4327-4243-bc38-086b20814532
+
+commit 46229221a5224b5f95d6e832fffaee5bd5d62989
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 17 09:54:38 2010 +0000
+
+    Remainder of gnutls support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@366 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6543f28ce951b979d1e79f913e8efee1af5e2ebd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 17 08:15:50 2010 +0000
+
+    Cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@365 400ebc74-4327-4243-bc38-086b20814532
+
+commit 22836b11951b820d23bc498a212c81a5845c0b68
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 17 08:13:45 2010 +0000
+
+    Use GnuTLS/gcrypt for HMAC/RC4
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@364 400ebc74-4327-4243-bc38-086b20814532
+
+commit 00ae52c74f9e8ca781a8dbb12b5b0bfd5a8a89d1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 17 07:09:28 2010 +0000
+
+    Add GnuTLS/Gcrypt support for DH key exchange
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@363 400ebc74-4327-4243-bc38-086b20814532
+
+commit f54e6dd040dc816631d1b5ebfc3ac0a5c59cfad0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 09:21:27 2010 +0000
+
+    More cleanups for SendPacket: timestamps, header type, etc.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@362 400ebc74-4327-4243-bc38-086b20814532
+
+commit a71c8384a27f1adedf721ebb25d60930f5e422e3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 07:22:45 2010 +0000
+
+    More for RTMP_Write, cleanup on Close
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@361 400ebc74-4327-4243-bc38-086b20814532
+
+commit 66cc854df76739f6a0552988390bfc84bec65cee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 06:08:33 2010 +0000
+
+    And more for RTMP_Write
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@360 400ebc74-4327-4243-bc38-086b20814532
+
+commit 240c5b5cdd88e1c1d0fcd4f8d7020afae77bd40f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 05:37:14 2010 +0000
+
+    More for RTMP_Write
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@359 400ebc74-4327-4243-bc38-086b20814532
+
+commit 762d9f5e5cc031f62a87709ea87f497ac8ef80cc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 04:57:10 2010 +0000
+
+    More for RTMP_Write
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@358 400ebc74-4327-4243-bc38-086b20814532
+
+commit 88cdd45b864aadf99dbf31559f4de719ab2081b9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 04:47:55 2010 +0000
+
+    More for RTMP_Write
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@357 400ebc74-4327-4243-bc38-086b20814532
+
+commit a6a41ce55363f77bc99d559f47e860def5503c1a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 04:06:22 2010 +0000
+
+    Partial RTMP_Write implementation
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@356 400ebc74-4327-4243-bc38-086b20814532
+
+commit fe1a5579f01299eb584fd705a6a3557a9b7c46f4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 16 00:18:11 2010 +0000
+
+    Handle UnpublishNotify for live streams
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@355 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6fc049aba00eff38e5dd81b0a218f41ab665b1fd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 15 17:07:55 2010 +0000
+
+    Fix seek timestamp
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@354 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8b43b3cd92e51631359c1e7f12123280bed95a3d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 15 08:31:21 2010 +0000
+
+    Declare struct sockaddr
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@353 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6edb752085c018f1fd43dc029cdc3e28255a1fe2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 14 05:31:36 2010 +0000
+
+    Use HOMEPATH on Windows, not HOME
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@352 400ebc74-4327-4243-bc38-086b20814532
+
+commit 03be2aa05725dddcee450845d962c3878610bc29
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 14 04:48:14 2010 +0000
+
+    Partial revert of prev commit, not needed
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@351 400ebc74-4327-4243-bc38-086b20814532
+
+commit 16eea9d384867a1cbd469be4cbf5055ac20fecf8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 14 04:41:56 2010 +0000
+
+    Always send tcUrl
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@350 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9abae8295606acfce2e476a3eadaf92638607c31
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Mar 14 04:30:24 2010 +0000
+
+    Rever -r343, app is not required
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@349 400ebc74-4327-4243-bc38-086b20814532
+
+commit 915ff92c8f5a640fb799b5a892ad2d0e757e0baa
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 21:38:45 2010 +0000
+
+    More cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@345 400ebc74-4327-4243-bc38-086b20814532
+
+commit 82adc0b3a33da59fd03f1b206666af99d628a3e2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 21:33:59 2010 +0000
+
+    Fix status reporting
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@344 400ebc74-4327-4243-bc38-086b20814532
+
+commit 29e3f7a53d27b7bab9dbf1b2b0c7f11f10ba21b6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 20:49:51 2010 +0000
+
+    app is a required parameter
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@343 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2666f3f3e515338eec5e2429b35e062b13f7cff7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 05:05:00 2010 +0000
+
+    Drop redundant CRYPTO #def
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@342 400ebc74-4327-4243-bc38-086b20814532
+
+commit ca2be25ff44ab6cd48ea854fb2d3748daf251604
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 04:42:28 2010 +0000
+
+    Private header file
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@341 400ebc74-4327-4243-bc38-086b20814532
+
+commit afcb1f93d897d03a255c546cdfab737c1e22cdee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 04:41:30 2010 +0000
+
+    Hide _debug output
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@340 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5803cf6e916a64aa4d83ac07348773e7480c8fd2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 04:36:08 2010 +0000
+
+    Fix pause/seek status
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@339 400ebc74-4327-4243-bc38-086b20814532
+
+commit b301493809fa38f1696ca1dab9c46d6815d35b29
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 04:17:02 2010 +0000
+
+    Use explicit AMF_debuglevel
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@338 400ebc74-4327-4243-bc38-086b20814532
+
+commit ed37047c0ba40bca9e9c91156e53630c8d43a727
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 04:00:58 2010 +0000
+
+    Consolidate RTMP_READ booleans
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@337 400ebc74-4327-4243-bc38-086b20814532
+
+commit a94008b6afb1a3907740b363606fb8467bbcd79c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 13 00:31:24 2010 +0000
+
+    Namespace cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@336 400ebc74-4327-4243-bc38-086b20814532
+
+commit 02272037f2c518e462d1a2c38766aba4ac4e5294
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 12 23:53:41 2010 +0000
+
+    Tweak prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@335 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2bad59758722f10cf46fca41c175553a2ee2373a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 12 23:53:08 2010 +0000
+
+    Don't #define closesocket if someone else has
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@334 400ebc74-4327-4243-bc38-086b20814532
+
+commit 390fa990b3d4b84eaa22fbb3630f82f331cca10d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 12 07:38:17 2010 +0000
+
+    Initialize port
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@333 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8c83ec08a5b70117b0353dab837e193292598e08
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 12 05:04:10 2010 +0000
+
+    Use RTMP_Read()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@332 400ebc74-4327-4243-bc38-086b20814532
+
+commit a687f0492d306ae1da031e34be4ee8951b8ba7ce
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 12 04:53:01 2010 +0000
+
+    Add RTMP_Read() to simplify library usage
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@331 400ebc74-4327-4243-bc38-086b20814532
+
+commit 80d606b43823b0a5e826d3c91fc88db96767d965
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 19:29:40 2010 +0000
+
+    Note FLV header fix
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@330 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0682bb39b745fd7be9b1d5fd4e8c4d2eeb211ef7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 19:27:06 2010 +0000
+
+    Silence spurious warning
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@329 400ebc74-4327-4243-bc38-086b20814532
+
+commit b94823a1bb9f07db8a48e5697793ca1f9b1b98e2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 19:23:10 2010 +0000
+
+    Cache initial packets, don't write header till we know the dataType
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@328 400ebc74-4327-4243-bc38-086b20814532
+
+commit d54a6f049de5b9a91a02f4af9b2f4b9b7208fdb4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 18:53:24 2010 +0000
+
+    Cache initial packets, don't write header till we know the dataType
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@327 400ebc74-4327-4243-bc38-086b20814532
+
+commit a34e9dcd81b51aaafeaf2a39e392114465699d8e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 18:31:45 2010 +0000
+
+    Rework WriteStream arguments
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@326 400ebc74-4327-4243-bc38-086b20814532
+
+commit 43c799b389fda0e2819330a7f7858db128e28508
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 11:58:34 2010 +0000
+
+    Notes for 2.2a
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@325 400ebc74-4327-4243-bc38-086b20814532
+
+commit e6b530913fe079294b0459f3032cca55344c68e1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 11:36:25 2010 +0000
+
+    Document rmtpt support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@324 400ebc74-4327-4243-bc38-086b20814532
+
+commit 680c7e3451c84d7d483710aaf3cce60edd5c576f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 10:56:34 2010 +0000
+
+    Drop assert
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@323 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4275eaefd0c297455743a53803df44cde7320e97
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 10:56:01 2010 +0000
+
+    More for rtmpt
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@322 400ebc74-4327-4243-bc38-086b20814532
+
+commit e9037c62b07e785c09410ba85c92766e870dc7b2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 07:14:26 2010 +0000
+
+    Cleanup whitespace
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@321 400ebc74-4327-4243-bc38-086b20814532
+
+commit 50d0c37f51c355fc3078dedd8ab17f489046f2af
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 07:04:29 2010 +0000
+
+    Fix default ports
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@320 400ebc74-4327-4243-bc38-086b20814532
+
+commit 69a937e084a4a4fed00c90031625264bdf99e19a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 10 06:57:31 2010 +0000
+
+    Preliminary rtmpt support - needs work...
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@319 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7c777f29c191af60e798004ebe81eec3fa9091a9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 9 07:18:48 2010 +0000
+
+    Fix ssl close
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@318 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7a15228e364e27700e5d93171ecf1cb78c4d83ce
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 9 07:05:57 2010 +0000
+
+    RTMPE is now protocol #2, not #3
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@317 400ebc74-4327-4243-bc38-086b20814532
+
+commit 82519279186e65a1ba7b5a7ca5a335b8f5484cf8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 9 07:02:55 2010 +0000
+
+    Preliminary support for SSL
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@316 400ebc74-4327-4243-bc38-086b20814532
+
+commit 430b75f0e0716b3a41dd5bc8f689c81f5d827d35
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Mar 9 02:50:45 2010 +0000
+
+    Fix hostname parsing
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@315 400ebc74-4327-4243-bc38-086b20814532
+
+commit 17ca5ec2092e223f4634ac4d68cacca9cc64ffcf
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 23:23:37 2010 +0000
+
+    Default version is <OS> 10,0,32,18
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@314 400ebc74-4327-4243-bc38-086b20814532
+
+commit 86fd72f9c49e25b1e8c1351fc16fa6219e761cee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 22:44:55 2010 +0000
+
+    Move Default flashVer into library, let SetupStream set the default
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@313 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7b1290cf0b2a8a2089e8bd7324e76dd3db430fa1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 15:31:32 2010 +0000
+
+    Cleanup m_sb compat macros
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@312 400ebc74-4327-4243-bc38-086b20814532
+
+commit e0d90f564c9e72ce3e4849fe9b2eed3c770fbae0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 15:14:55 2010 +0000
+
+    More log.h cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@311 400ebc74-4327-4243-bc38-086b20814532
+
+commit 36b7207877d00fe97741593aeafba3d7334e41da
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 15:13:57 2010 +0000
+
+    Drop log.h from rtmp.h
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@310 400ebc74-4327-4243-bc38-086b20814532
+
+commit 59af4aea68ac8b48e918a6dc6bb582fe62e12a80
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 14:41:31 2010 +0000
+
+    0 is a valid fd
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@309 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3ab03df288b4477f223c766a8b2759e757a18350
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 14:17:15 2010 +0000
+
+    Publish RTMP_SendSeek()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@308 400ebc74-4327-4243-bc38-086b20814532
+
+commit 88ee958fedb8b20a5c972b7c63307c7de5cb912d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 13:38:05 2010 +0000
+
+    Fix license header
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@307 400ebc74-4327-4243-bc38-086b20814532
+
+commit ce2a5bb1e09707fd991f4c429cf59b773b1469e5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 8 13:34:10 2010 +0000
+
+    C++ compat, move parseurl to librtmp
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@306 400ebc74-4327-4243-bc38-086b20814532
+
+commit 02f8383b0ef76718b0d28ac87afddae356f8d803
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Mar 6 19:34:08 2010 +0000
+
+    Cleanup ARM example
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@305 400ebc74-4327-4243-bc38-086b20814532
+
+commit 22eb25e5d1d557203e6c45aafde641f3871207f3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 5 21:59:30 2010 +0000
+
+    Note where to get OpenSSL DLL for Windows
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@302 400ebc74-4327-4243-bc38-086b20814532
+
+commit 25dcbb01c1ab0aae80ddfead19396312e1629b1a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Mar 5 20:31:18 2010 +0000
+
+    Add HTML versions of manpages
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@298 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5d84fe61f9b799d781be93e3c075872e9d01cf58
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 23:42:55 2010 +0000
+
+    Cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@296 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7fe8d4c73d18191a3369a68bd4a47bbeecc46be5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 17:15:40 2010 +0000
+
+    Cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@295 400ebc74-4327-4243-bc38-086b20814532
+
+commit 430f250c4709fed4672c6ea2995b0458b9345c99
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 17:07:21 2010 +0000
+
+    Manpage for rtmpgw
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@294 400ebc74-4327-4243-bc38-086b20814532
+
+commit 82aa4028505c718350f5e5539aa78737f14dfbe0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 17:04:17 2010 +0000
+
+    Add socks option
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@293 400ebc74-4327-4243-bc38-086b20814532
+
+commit 27316576d0443b42cfd354618b2011d74d7845d4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 16:28:16 2010 +0000
+
+    More typos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@292 400ebc74-4327-4243-bc38-086b20814532
+
+commit 06dd8231306fc87a81ad6746f1240f65bc709e27
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 16:19:21 2010 +0000
+
+    Fix typos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@291 400ebc74-4327-4243-bc38-086b20814532
+
+commit e9686be082f9dc1f862d8841b88c4456c2cde987
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 16:02:17 2010 +0000
+
+    streams -> rtmpgw
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@290 400ebc74-4327-4243-bc38-086b20814532
+
+commit 93aaf72910a9cebf0ac18aa0650e4355efeaea2c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 15:02:31 2010 +0000
+
+    Move librtmp to separate directory, relicense as LGPL
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@289 400ebc74-4327-4243-bc38-086b20814532
+
+commit aa2f2bf2a3ddf8711f47a22bb7cc939b7660e429
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 14:58:51 2010 +0000
+
+    More typos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@288 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9c71c5a6e494c19e3d7207b0c837c63c91c00240
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 09:17:33 2010 +0000
+
+    Add ENVIRONMENT
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@287 400ebc74-4327-4243-bc38-086b20814532
+
+commit 04a60be0286e9adf490e12f72a927c02ba549d63
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 08:56:28 2010 +0000
+
+    Add Exit Status info
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@286 400ebc74-4327-4243-bc38-086b20814532
+
+commit ea84cbfbaa4bca4a4126b689eb7b86cbf311e09f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 07:52:02 2010 +0000
+
+    Fix AMF_EncodeString to handle Long Strings
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@285 400ebc74-4327-4243-bc38-086b20814532
+
+commit f494d191db86897ca6068c2d3cbdc252e05ac714
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 07:48:55 2010 +0000
+
+    Fix decoding of Long Strings
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@284 400ebc74-4327-4243-bc38-086b20814532
+
+commit a2e35ecae94c9826126eeb2e4c2fbc74c043bed1
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 07:25:29 2010 +0000
+
+    Renamed streams program to rtmpgw
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@283 400ebc74-4327-4243-bc38-086b20814532
+
+commit a8bb25393565b2e12d513c512725b8e7cc2cdc36
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 07:17:29 2010 +0000
+
+    Fix Play/Stop responses
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@282 400ebc74-4327-4243-bc38-086b20814532
+
+commit 84311272abee0d5e893439e4d0fde09d59d2bd4f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 07:10:39 2010 +0000
+
+    Fix typos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@281 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2e8793811b2880bc2f124a507380a27269c615c3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 06:31:09 2010 +0000
+
+    Cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@280 400ebc74-4327-4243-bc38-086b20814532
+
+commit e359936c891dc5a81bf029509d2b939760df8d5e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Mar 4 06:24:14 2010 +0000
+
+    Manpage
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@279 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6970e8419b9a6c793ecc9ef4ecc5cccba098118b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Mar 3 01:34:56 2010 +0000
+
+    Move rtmp.o, amf.o, log.o, hashswf.o to librtmp.a
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@278 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9825e4c94e6f12d6b7da1c9ae3f92e61f150be26
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Mar 1 04:30:34 2010 +0000
+
+    Cleanup more endian cruft
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@277 400ebc74-4327-4243-bc38-086b20814532
+
+commit a459d3b25d626a21799ece38647c94dad54d3f18
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Feb 27 21:48:51 2010 +0000
+
+    More FP10 handshake support.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@276 400ebc74-4327-4243-bc38-086b20814532
+
+commit 99d15619405f63c196cd0103e2617401b37e87e4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Feb 26 04:32:55 2010 +0000
+
+    Account for quotes in cmd string
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@275 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0d2071fd04d97c4f4db642a743b03cb3fada7414
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Feb 25 23:26:33 2010 +0000
+
+    Expand public API
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@274 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2a5135e4b434bb41ca1bbcecd1380f9a8ddd41fe
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Feb 25 22:04:37 2010 +0000
+
+    Fix SEGV when swfUrl is NULL
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@272 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3afa522f334923d2887b6bd634b06849944f306e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 10:57:10 2010 +0000
+
+    Cleanup iptables / ipfw info
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@268 400ebc74-4327-4243-bc38-086b20814532
+
+commit 75004066520cf2028df753ce3e6f7fe96ea2f121
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 04:47:22 2010 +0000
+
+    Portability fixes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@265 400ebc74-4327-4243-bc38-086b20814532
+
+commit 409d4ac2cc708706b726fdc974fec37ead73cbee
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 03:17:25 2010 +0000
+
+    Partial revert of prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@261 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1d61a5d1014e59bb294ae344c8c6456b865203eb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 03:11:40 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@260 400ebc74-4327-4243-bc38-086b20814532
+
+commit aebb535cf75cb5ade5cba4229fe21353afd2d264
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 02:43:37 2010 +0000
+
+    v2.1d updates
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@259 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0661070f18b280e089181375f01fa1bcc158f5a6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 02:32:49 2010 +0000
+
+    Notes for v2.1d
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@258 400ebc74-4327-4243-bc38-086b20814532
+
+commit b5aedcb43edbff93fc3d7135dc44b5d1766ff3ff
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 02:22:12 2010 +0000
+
+    Spawn rtmpdump directly, don't just print the cmdline
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@257 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7ced770c341ef2d44c1627706bafeb7967478f3d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 21 02:16:19 2010 +0000
+
+    Log a final status update when stopping
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@256 400ebc74-4327-4243-bc38-086b20814532
+
+commit f51f554ee4fdc9e23cb5fb425795fb765dd025df
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Feb 20 02:37:51 2010 +0000
+
+    Derive output name from playpath. (Code copied from rtmpsuck)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@255 400ebc74-4327-4243-bc38-086b20814532
+
+commit cf6b79694ba6eee10e5912401030963a07f46e95
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Feb 16 05:34:14 2010 +0000
+
+    Don't advance to next file if playlist has only one file
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@254 400ebc74-4327-4243-bc38-086b20814532
+
+commit 80f19b110acccdb3f951fc1c9cf373d229232ac4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Feb 16 02:10:35 2010 +0000
+
+    Fix debug msg
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@253 400ebc74-4327-4243-bc38-086b20814532
+
+commit be3f4c7be0c10527fb68a992f6a386248d46c796
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Feb 15 21:49:01 2010 +0000
+
+    Ignore ctrl 31/32 in live streams
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@252 400ebc74-4327-4243-bc38-086b20814532
+
+commit 94901a643d476ef297c4a7f2724d6586d5092be2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 14 20:55:21 2010 +0000
+
+    Fix r248
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@251 400ebc74-4327-4243-bc38-086b20814532
+
+commit 180093d22a161adcfd7077d9655e2c81138f7e88
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Feb 14 20:46:47 2010 +0000
+
+    More fixes for pause/resume - don't overwrite pauseStamp if already paused
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@250 400ebc74-4327-4243-bc38-086b20814532
+
+commit ad5b79c1d19af29836873d4bd66c213af79e2b98
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Feb 11 22:34:13 2010 +0000
+
+    Cleanup prev commits
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@249 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9642d0a1d8343a64662edde84a0639d67aaef5bf
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Feb 11 22:30:18 2010 +0000
+
+    From Antti Ajanki: expose http_get()
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@248 400ebc74-4327-4243-bc38-086b20814532
+
+commit b02b66a3dbf367977226cef5f6835c4d8f893414
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Feb 11 09:52:39 2010 +0000
+
+    Fix audio resume bug
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@247 400ebc74-4327-4243-bc38-086b20814532
+
+commit 39cc01122d42e60c0e5f924c1fbcd723ed98cf37
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Feb 9 20:04:27 2010 +0000
+
+    Minor fixes from Antti Ajanki
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@246 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7632b293a6f0986ed173b61b2772cec2203832b5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Feb 5 04:53:40 2010 +0000
+
+    Another timestamp fix, same as r202
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@245 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7b357c291164802852a71ff7bba34a3d2c891ab5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Feb 5 04:45:22 2010 +0000
+
+    Fix r239, there are 4 fields per record now
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@244 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1487ff5709c9da0584b4106d85f49359a0729885
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 30 03:59:32 2010 +0000
+
+    Silence warning
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@243 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7feb004fb6ad78e8b448cfea834087d046b31da8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jan 28 05:36:58 2010 +0000
+
+    Prep for FlashPlayer10 handshake support. (Probably should choose offset
+    based on plaintext vs encrypted...) Only 128 bits are needed for DH key, not 1024.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@242 400ebc74-4327-4243-bc38-086b20814532
+
+commit c7d49273c7b104ac022be2323a3ff3574f7a4c99
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 26 22:46:38 2010 +0000
+
+    Drop osx-specific rules. Don't mention cygwin or any other
+    platforms. Just override from the command line if you need other settings.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@241 400ebc74-4327-4243-bc38-086b20814532
+
+commit aaafa1ef1081f55002fda75d5418bd0204f6e342
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 19 02:26:45 2010 +0000
+
+    Allow zero swfAge to force HTTP check every time
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@240 400ebc74-4327-4243-bc38-086b20814532
+
+commit edbaec164a0d3e6dfecfddb3b252d5b76a9f1854
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 19 00:58:21 2010 +0000
+
+    Add ctim to ~/.swfinfo, recording the last time we checked on the
+    info for a given SWF. Use Age parameter to control how often we check.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@239 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3aa31fb16729b51e5f6d5d770532af007ef6be19
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 18 22:42:50 2010 +0000
+
+    Log BytesReceived reports from client
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@238 400ebc74-4327-4243-bc38-086b20814532
+
+commit c8621a5b83e42f4d4a7cfd0bfa5f61a761599fab
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 16 21:37:01 2010 +0000
+
+    Don't send our own byte counts, the real client will
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@237 400ebc74-4327-4243-bc38-086b20814532
+
+commit 375de5ebcc29498b1a4146454eceb6dab750017e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 15 08:25:43 2010 +0000
+
+    Split RTMP_Connect up, add m_bSendCounter flag; proxy doesn't need to
+    send byte counts since the real client/server will.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@236 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0ade4afe240cff1a6e719287512e01ff4d2319f5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jan 14 07:11:47 2010 +0000
+
+    Use __APPLE__ instead of __MACOSX__
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@235 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9858be6ff7a2c09a6b136556c827ee0f8d33e07b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 16:26:29 2010 +0000
+
+    Note parseurl fix for extensions
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@232 400ebc74-4327-4243-bc38-086b20814532
+
+commit c1697d7fd62924bf5255d0d1df6c58c2c07defa7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 16:24:29 2010 +0000
+
+    Handle extensions followed by URL parameters
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@230 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7f35fd6925e39092d6e8c654ee444f3a5e65fab6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 07:20:02 2010 +0000
+
+    Close both connections on cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@228 400ebc74-4327-4243-bc38-086b20814532
+
+commit 46be6abf206c6296341d5eaa834cc5d6d9deb704
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 07:09:13 2010 +0000
+
+    Tweak SendChunk to use a single WriteN call
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@227 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7b5ba9715a13b404e0c8a4d5b6c5a00dbe82439a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 07:00:31 2010 +0000
+
+    Skip leading dot in filenames
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@226 400ebc74-4327-4243-bc38-086b20814532
+
+commit 62d76976e94b29346af5cbef86a0e0faf6bc9c0f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 04:00:30 2010 +0000
+
+    Cleanup unused field
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@225 400ebc74-4327-4243-bc38-086b20814532
+
+commit 40706b07086115815312309a0cbfdc36038f8bcb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 03:00:36 2010 +0000
+
+    Fix typo in comment
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@224 400ebc74-4327-4243-bc38-086b20814532
+
+commit e56dffa7a5a2ced5436269290fdacc9916d99791
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 02:57:58 2010 +0000
+
+    rtmpdump params should be printed on stdout
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@222 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1a24034f3d5e4b036e40677d98e9d9c88ea66d41
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 02:31:17 2010 +0000
+
+    Fix AMF_Decode() end detection
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@220 400ebc74-4327-4243-bc38-086b20814532
+
+commit 741be38d85e3204c1914fca6be324b4f9382465d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 02:29:09 2010 +0000
+
+    Use double quotes instead of single quotes for output
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@219 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8f26abbae2bf9362dc3b49fed2cf8672af986d95
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 02:28:41 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@218 400ebc74-4327-4243-bc38-086b20814532
+
+commit 301b36e3745375bebffa3be5a1d0518390d42bc8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 02:09:50 2010 +0000
+
+    Also support NULL for --conn parameters
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@216 400ebc74-4327-4243-bc38-086b20814532
+
+commit f267ce2b07647a26f5326600e5ca95650d24dbb5
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 00:46:23 2010 +0000
+
+    Notes for connect params
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@214 400ebc74-4327-4243-bc38-086b20814532
+
+commit f504f0dbbe1063c6266133e81cb4587a929fc28d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 00:26:34 2010 +0000
+
+    more for 2.1c, arbitrary AMF data in connect requests
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@213 400ebc74-4327-4243-bc38-086b20814532
+
+commit d9c75f794160f228d06b4c8bc0940c4cb7bf7732
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 9 00:23:22 2010 +0000
+
+    Add --conn|-C option to append arbitrary AMF data to connect request
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@212 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5cbd51a9a2f5e53853531fcdac9c67715aa3656b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 8 04:57:09 2010 +0000
+
+    More 2.1c misc
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@210 400ebc74-4327-4243-bc38-086b20814532
+
+commit 407f0fedd7df7ea31b9f7de34b149e730d3ece3a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 8 04:53:39 2010 +0000
+
+    Fallback to Reconnect if ToggleStream didn't work, then give up if both fail
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@209 400ebc74-4327-4243-bc38-086b20814532
+
+commit acfe7413afc3380319ce76c7364b42b8f09f7912
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 8 04:28:15 2010 +0000
+
+    Changes for 2.1c
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@208 400ebc74-4327-4243-bc38-086b20814532
+
+commit 25a62116ed3931267620552313c0b9b5c406be75
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 8 04:13:12 2010 +0000
+
+    Format rtmpsrv output as an rtmpdump commandline for copy/paste
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@207 400ebc74-4327-4243-bc38-086b20814532
+
+commit 261d020d44ad47d9da67ff7014285165e68cf04a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 8 03:48:37 2010 +0000
+
+    Only flush LogPrintf() if output ends with \n
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@206 400ebc74-4327-4243-bc38-086b20814532
+
+commit c44b5ee1c41935c26576f6be7a067bcb1163646e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jan 7 22:28:54 2010 +0000
+
+    Fixed per-chunk sending
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@205 400ebc74-4327-4243-bc38-086b20814532
+
+commit a9772a21a4f7ec2701a27f1fe313738ff86b13bf
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Jan 7 07:35:35 2010 +0000
+
+    Partially revert -r200, per-chunk sending is fragile at the moment
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@204 400ebc74-4327-4243-bc38-086b20814532
+
+commit a48c69b73bb1d0ce00642ef94a8d08563817be09
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 14:18:37 2010 +0000
+
+    More cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@203 400ebc74-4327-4243-bc38-086b20814532
+
+commit 84587bbd44e7d273105acf89aea8b01ebc197a63
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 13:22:17 2010 +0000
+
+    Fix timestamp due to amf fixes, fix buf mgmt due to header changes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@202 400ebc74-4327-4243-bc38-086b20814532
+
+commit 184e54f0819be361ae4d3d1274d1feb2b3efddcb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 11:00:43 2010 +0000
+
+    Simplify playlist handling
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@201 400ebc74-4327-4243-bc38-086b20814532
+
+commit e7faab2112146bb100b377923f37fc6e988e9024
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 10:29:47 2010 +0000
+
+    Relay data in chunks instead of full packets, to reduce latency. Support
+    multiple outstanding Play requests.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@200 400ebc74-4327-4243-bc38-086b20814532
+
+commit 46bf276c1028a70f4fdbf18ccbeae16c4d97d046
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 10:23:59 2010 +0000
+
+    Add RTMP_SendChunk() for sending incomplete packets. Add m_header to packet,
+    for a copy of a received packet's raw header
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@199 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0fbe66d2ec7466ece26643d6ea1803d5a9170d17
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 09:42:45 2010 +0000
+
+    Plug mem leaks
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@198 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5414cca0e46e82e54a9505f4687f6f15cb8ada96
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 04:28:29 2010 +0000
+
+    app is parsed from url
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@197 400ebc74-4327-4243-bc38-086b20814532
+
+commit b3c41c9252f03bfb328f7827da4e96c16c2eb922
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 04:00:16 2010 +0000
+
+    Failing to respond to SWF Verification request is an error, not a warning
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@196 400ebc74-4327-4243-bc38-086b20814532
+
+commit b6791ed0288fc0f348d5e4bda2755dcb9f1d67ff
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 02:00:09 2010 +0000
+
+    Use unsigned int for timestamps
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@195 400ebc74-4327-4243-bc38-086b20814532
+
+commit 583959522710fc3c0bf462a14e7362326ed559c3
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 01:57:53 2010 +0000
+
+    Fixes for extended timestamps, bounds checks
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@194 400ebc74-4327-4243-bc38-086b20814532
+
+commit cb79bec28b6a8715d936c7877ea4a0f7543317d9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Jan 6 00:36:40 2010 +0000
+
+    Don't try to close server->socket multiple times
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@193 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6bd2d8ba8ae9991cb3877cf60b6cbe3b3ee13958
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 5 22:22:07 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@192 400ebc74-4327-4243-bc38-086b20814532
+
+commit af18cbdb2d651f0514efc4a291b52c619f31da0f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 5 21:17:37 2010 +0000
+
+    Restore 'v' that was dropped from version by mistake
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@191 400ebc74-4327-4243-bc38-086b20814532
+
+commit c329b39a5e4660b89ba0cecd4ff4158efeb4a351
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 5 05:00:42 2010 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@190 400ebc74-4327-4243-bc38-086b20814532
+
+commit 20b1cd954d11a7315eb2a2d981b47ac9fa75babb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 5 03:46:39 2010 +0000
+
+    Add optional packet param to RTMP_Connect(); rtmpsuck will just send
+    the original connect packet instead of generating its own.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@189 400ebc74-4327-4243-bc38-086b20814532
+
+commit 316d4326ae321a0a15573fdae4de93077085f470
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Jan 5 01:40:22 2010 +0000
+
+    playpath needs to be url-decoded
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@187 400ebc74-4327-4243-bc38-086b20814532
+
+commit 013740de94f49277431279f1a57a96a58b64fc8f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 12:08:46 2010 +0000
+
+    Updates for 2.1b
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@183 400ebc74-4327-4243-bc38-086b20814532
+
+commit 36690feabb0e181e9615737956bc766cd0b0fed4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 11:35:51 2010 +0000
+
+    Fix URL matching in file check
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@182 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7f7a31769c5b614ba7ca3f11a539297826522ffe
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 07:59:40 2010 +0000
+
+    Handle getStreamLength
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@181 400ebc74-4327-4243-bc38-086b20814532
+
+commit f5e71ad5c5fd00ec99d5420e34bb8c008a84597a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 07:59:05 2010 +0000
+
+    More logging cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@180 400ebc74-4327-4243-bc38-086b20814532
+
+commit 347c00e05fd9bb795bab948e05843d8575865b6e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 06:59:48 2010 +0000
+
+    Cleanup filename some more, close immediately if client goes away and
+    we don't have an active stream from the server.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@179 400ebc74-4327-4243-bc38-086b20814532
+
+commit 885c43d85f066f22481b68d44c7837d36b2f305d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 04:04:21 2010 +0000
+
+    Close the session on close request
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@178 400ebc74-4327-4243-bc38-086b20814532
+
+commit 21c3fea5d95d3783b55583c91a00dbff3663c08d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Jan 4 04:03:38 2010 +0000
+
+    Add flag for sending objectEncoding even if it's zero
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@177 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4f5e97cbdc5881f9f6092b2d88110d9cee3eddf8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Jan 3 04:15:19 2010 +0000
+
+    Fix typo
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@176 400ebc74-4327-4243-bc38-086b20814532
+
+commit f1b9ab7065da06d5db102b895f0caa1273ff4bb7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Jan 3 04:10:04 2010 +0000
+
+    Fix bufferSize in resume
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@175 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7f2aeda0f4cf329d1a76404950091d4e5ec24002
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 23:56:29 2010 +0000
+
+    Always flush log output
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@174 400ebc74-4327-4243-bc38-086b20814532
+
+commit b4a4d78de8b83159738c5861c14cb6c6c3eeae97
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 23:46:34 2010 +0000
+
+    revert accidental commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@173 400ebc74-4327-4243-bc38-086b20814532
+
+commit 29371d0053b789d45af534fb754906103530cb6f
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 23:45:59 2010 +0000
+
+    Cleanup CRYPTO dependencies
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@172 400ebc74-4327-4243-bc38-086b20814532
+
+commit 263e210e1544e5d63fcda82db1133016a5c86bdc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 23:25:45 2010 +0000
+
+    Zap colons in playpath
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@171 400ebc74-4327-4243-bc38-086b20814532
+
+commit d1960da5c0297a3fb8fa219db87503044981e104
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 23:10:00 2010 +0000
+
+    Fix: handle auth parameters in connect request
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@170 400ebc74-4327-4243-bc38-086b20814532
+
+commit a8f0db5db37917431e62d00f626f7770ff30db75
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Jan 2 03:55:55 2010 +0000
+
+    Fix WIN32 timeout handling
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@169 400ebc74-4327-4243-bc38-086b20814532
+
+commit 066b686bac151b0d7cc8b8988b4d20fc1b8fefff
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 1 22:49:07 2010 +0000
+
+    2.1a updates: copyright year, streams description in README
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@165 400ebc74-4327-4243-bc38-086b20814532
+
+commit e72de21f8aeae862344c12644da183d55433032e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 1 21:04:43 2010 +0000
+
+    More cleanup for prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@164 400ebc74-4327-4243-bc38-086b20814532
+
+commit bbae1e04a71e4b20446bb0f408fee640dbbbda52
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 1 20:52:01 2010 +0000
+
+    Cleanup prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@163 400ebc74-4327-4243-bc38-086b20814532
+
+commit ee515950ac22a70a1a7ed44d52e5c66826d372b8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Jan 1 20:48:49 2010 +0000
+
+    Fix SO_RCVTIMEO for WIN32
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@162 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8f479645f672d9e6c8c57a545fd34cce77b8c588
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 04:16:45 2009 +0000
+
+    Need <errno.h> here too
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@156 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1f9f0ef73f69d9389bc70a8eff0cb3a8926903ad
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 04:10:30 2009 +0000
+
+    More thread cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@155 400ebc74-4327-4243-bc38-086b20814532
+
+commit e9318d38047e7042957c36ab41f973ba3b8ef05d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 03:17:26 2009 +0000
+
+    Add some messages for failures
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@154 400ebc74-4327-4243-bc38-086b20814532
+
+commit 398c655841befe207dceaee7b3e28d571253d1f2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 03:05:40 2009 +0000
+
+    Silence warning
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@153 400ebc74-4327-4243-bc38-086b20814532
+
+commit 918e60715710cf4dbcc4ce206f092b97ab860707
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 03:03:16 2009 +0000
+
+    More for warnings
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@152 400ebc74-4327-4243-bc38-086b20814532
+
+commit 38669baba8254ce8c5cf88f4f90061ac327e6b72
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 03:02:14 2009 +0000
+
+    comment out unused functions to silence warnings
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@151 400ebc74-4327-4243-bc38-086b20814532
+
+commit fa70b7551e590f94dbd1238721c788a9fd69d6b2
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 02:58:04 2009 +0000
+
+    Move thread support to its own files
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@150 400ebc74-4327-4243-bc38-086b20814532
+
+commit b146d02998eab9496e7bd6f593432513931b88d8
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 02:43:32 2009 +0000
+
+    More cleanup for mingw
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@149 400ebc74-4327-4243-bc38-086b20814532
+
+commit 1fa18b9c0b49a45e0607086237e65cdbf111671e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 02:30:54 2009 +0000
+
+    More cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@148 400ebc74-4327-4243-bc38-086b20814532
+
+commit 967488c3f9b676b9b47c61df55cd166e7cf984b9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 02:01:02 2009 +0000
+
+    Cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@147 400ebc74-4327-4243-bc38-086b20814532
+
+commit af6c77a0e13bca4c18afd47787aa45591c616c44
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 31 01:42:06 2009 +0000
+
+    Refactor a bit for WIN32 compatibility
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@146 400ebc74-4327-4243-bc38-086b20814532
+
+commit 2409f844448f94042402aebbd9f64dacc5af5233
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 08:19:16 2009 +0000
+
+    HashSWF(,ask)
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@145 400ebc74-4327-4243-bc38-086b20814532
+
+commit d381eae94f356438ff578090640b2254759cde17
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 08:17:27 2009 +0000
+
+    Add 'ask' param back to HashSWF, expose HandlePacket as RTMP_ClientPacket
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@144 400ebc74-4327-4243-bc38-086b20814532
+
+commit dea45a2d8ebccbd07020c6cc6ca97912f8a5ca99
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 06:23:42 2009 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@143 400ebc74-4327-4243-bc38-086b20814532
+
+commit de607d7662c0b21bc5f7eed9898016a03bae1943
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 06:17:36 2009 +0000
+
+    Prep for 2.1; use Referrer in HashSWF
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@142 400ebc74-4327-4243-bc38-086b20814532
+
+commit 13c4b5b6fe3c96369c09cfd31c1556737540e1c9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 04:30:45 2009 +0000
+
+    Rename SWFVerify() to RTMP_HashSWF(), rename swfvfy.c to hashswf.c
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@141 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5c615b6afd4ffbcc56d47e9a8c2410a2ead0242c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 02:30:50 2009 +0000
+
+    Strip unused stuff, close output file on Netstream.Play.Stop
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@140 400ebc74-4327-4243-bc38-086b20814532
+
+commit d0ef6998ea8e30859e942bbe383860a00cd65afb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 30 01:54:47 2009 +0000
+
+    Notes about rtmpsuck.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@139 400ebc74-4327-4243-bc38-086b20814532
+
+commit be12945fb3c126bf4b1afaa0ea12ae5eb51e8a21
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 23:41:59 2009 +0000
+
+    Add -z option to enable debug
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@138 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4ee247a202fa542021c29375ed6562c0ad51758b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 23:37:52 2009 +0000
+
+    Write headers for 0-length packets
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@137 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8fc01735f1a579a4f5add95dc76afdb2024aff45
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 23:16:09 2009 +0000
+
+    More fixes for SendPacket channels
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@136 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5bc2c62f9339e131f4c72b47f66948e5da294d29
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 22:56:25 2009 +0000
+
+    Use m_outChunkSize
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@135 400ebc74-4327-4243-bc38-086b20814532
+
+commit 923c4fe30fb3e89a06f69f8c38243dddf93f845a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 22:48:28 2009 +0000
+
+    Change chunksize as needed, don't talk to HTTP server if we already have cached hash,
+    other packet processing fixes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@134 400ebc74-4327-4243-bc38-086b20814532
+
+commit dfc78137a3feb528be1a5657e475c3a4425d4365
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 22:47:18 2009 +0000
+
+    Add "ask" param, don't talk to HTTP server if we already have cached hash
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@133 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5e2d1a4583267c0602c6e716db1f7cb1c372bd50
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 22:45:11 2009 +0000
+
+    Add separate in/out chunk size, fix channels in SendPacket, add packet logging
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@132 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9df915dd5d646b39e41fe4126f8347cc18070e4c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 22:23:05 2009 +0000
+
+    Make LogHexString() more usable, add DEBUG2 level
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@131 400ebc74-4327-4243-bc38-086b20814532
+
+commit 09a0535db70e2ed406749768f071c491ba5fb85c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 10:59:24 2009 +0000
+
+    Drop libcurl stuff
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@130 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9cc668867a5f35d005e147dbb5746a25558e04f0
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 08:36:46 2009 +0000
+
+    Check for fopen failing
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@129 400ebc74-4327-4243-bc38-086b20814532
+
+commit 5391b15eb265bdcdd6495c5078b6502be19981fb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 08:13:36 2009 +0000
+
+    Fix prev commit
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@128 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6e107c92c5924fef6d49bdf6e54f4abcebd4add6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 08:12:09 2009 +0000
+
+    Add transparent proxy server, work in progress.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@127 400ebc74-4327-4243-bc38-086b20814532
+
+commit 44ab994ec0ea0c529df28a0b1963753bbbf67bde
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 08:10:10 2009 +0000
+
+    Expose RTMP_SendCtrl, tweak RTMPPacket_Alloc to reserve space for header
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@126 400ebc74-4327-4243-bc38-086b20814532
+
+commit 501159e5882d8c68df3a4bdcf4b2c465edcc760a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 29 08:07:09 2009 +0000
+
+    Strip trailing params from swfurl in saved copy
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@125 400ebc74-4327-4243-bc38-086b20814532
+
+commit a45cfbe63384867df2bca9cec0f45fdb520df807
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 28 23:23:32 2009 +0000
+
+    Note that Curl and Zlib are now required
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@124 400ebc74-4327-4243-bc38-086b20814532
+
+commit 6fbcac4815d09a2ed84375ea7fcaae33dcfbcd11
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 28 23:17:26 2009 +0000
+
+    Add note about automatic SWF verification
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@123 400ebc74-4327-4243-bc38-086b20814532
+
+commit 675cda072efd4dc130f7a408da5a0058205432ca
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 28 23:08:06 2009 +0000
+
+    Automate SWF verification, use -W instead of -s
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@122 400ebc74-4327-4243-bc38-086b20814532
+
+commit 8a189ac78e7ca8f9122e7628affe80721f6c7a0d
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 28 08:59:15 2009 +0000
+
+    Restore Windows compatibility patches
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@121 400ebc74-4327-4243-bc38-086b20814532
+
+commit 091881d036f341bca90b42683b4aa2ada41a200a
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 28 08:53:48 2009 +0000
+
+    Add note about rtmpsrv
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@120 400ebc74-4327-4243-bc38-086b20814532
+
+commit d1c57f84f9347e6f2def9720c0966d56ff5eefd4
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Dec 27 23:01:32 2009 +0000
+
+    Ignore zero-length packets during connect
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@119 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0ca33d5132871c1cf21dd107d9efe2bfb2df086e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Dec 27 20:35:23 2009 +0000
+
+    Add missing notices
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@118 400ebc74-4327-4243-bc38-086b20814532
+
+commit da9bdebd3c6694ad6e14d313f3207e7ecee8a4b7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Dec 26 23:51:30 2009 +0000
+
+    Cleanup, comments on TEA
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@117 400ebc74-4327-4243-bc38-086b20814532
+
+commit b325d8e3e259385066bbf2ef775171464f375805
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Dec 26 23:42:28 2009 +0000
+
+    Fix typo in r114
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@116 400ebc74-4327-4243-bc38-086b20814532
+
+commit b9529ca6c8cc0ae056fa95e67eb71797c2243375
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Dec 26 23:37:45 2009 +0000
+
+    SecureToken support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@115 400ebc74-4327-4243-bc38-086b20814532
+
+commit cfe110af69c206160cce7f66ea871e20bd217af6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sat Dec 26 23:36:35 2009 +0000
+
+    Minor cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@114 400ebc74-4327-4243-bc38-086b20814532
+
+commit 210ab4bfdab05235a64274b850a0fc995da78650
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 24 22:13:03 2009 +0000
+
+    Fix typo in verifying client signature
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@113 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3a04cdc3c7683391e5f5ca95e24f21bf4812b256
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 24 21:59:20 2009 +0000
+
+    Fix typo in retrieving client digestpos
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@112 400ebc74-4327-4243-bc38-086b20814532
+
+commit a7ed29916d9d3d4698b62ef1e941cf04c2a16d99
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 08:05:04 2009 +0000
+
+    Log client's destination IP address, in case it was redirected
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@111 400ebc74-4327-4243-bc38-086b20814532
+
+commit af67a82c0bf5583ea26834733379176da78d6165
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 07:26:08 2009 +0000
+
+    s/server/peer/ now that we support both sides
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@110 400ebc74-4327-4243-bc38-086b20814532
+
+commit dd1d3a0f1c1f93b3f407a22e1ef75508b3234d5e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 07:21:24 2009 +0000
+
+    Allow AMF3 encoding
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@109 400ebc74-4327-4243-bc38-086b20814532
+
+commit e0cfc12e719c4a27c0869548d02fd25b9e4dc6dc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 06:10:37 2009 +0000
+
+    Add dummy RTMP server. Doesn't serve any data, just sucks up
+    connection parameters from a client.
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@108 400ebc74-4327-4243-bc38-086b20814532
+
+commit e6fa7be07ceafb86c3d0d08181ea133b64d6a082
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 04:55:19 2009 +0000
+
+    Change AMF_Encode* APIs to include buffer end checking, restructure...
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@107 400ebc74-4327-4243-bc38-086b20814532
+
+commit 556bb8be837b6d9bd65f553daf60a316d00840cc
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Tue Dec 22 00:50:58 2009 +0000
+
+    Added server-side handshaking. Will probably split these files later...
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@106 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7477d30d388bf9ca1ae59c8688bd27ef2939039e
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 21 20:50:25 2009 +0000
+
+    Silence spurious warning
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@105 400ebc74-4327-4243-bc38-086b20814532
+
+commit beb301c1a680c9aa60498a7e7e65c0b088323669
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Mon Dec 21 20:46:11 2009 +0000
+
+    Restructure, always send 2nd handshake packet before reading 2nd packet
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@104 400ebc74-4327-4243-bc38-086b20814532
+
+commit 76deb76fb1776d0ec5976d4e42d90254d55422d9
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Sun Dec 20 07:32:10 2009 +0000
+
+    Minor cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@93 400ebc74-4327-4243-bc38-086b20814532
+
+commit 90dda6cb023c46e2ba9f6b768ddb2c2c64c8b1df
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Dec 18 18:11:46 2009 +0000
+
+    Allow longer URLs for subscribepath
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@92 400ebc74-4327-4243-bc38-086b20814532
+
+commit 200e921895c578e03e2f34953c9df8d501835683
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Fri Dec 18 09:41:23 2009 +0000
+
+    Always log Invokes, even if we don't exepct a _result
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@91 400ebc74-4327-4243-bc38-086b20814532
+
+commit 3b9f4829f0477a68ebb7d1d4a11d34087b3e5488
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 07:11:42 2009 +0000
+
+    Fix whitespace in debug
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@87 400ebc74-4327-4243-bc38-086b20814532
+
+commit 09246404944aa78568f997a9b0c93b2ac151c35b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 03:29:36 2009 +0000
+
+    Win32 thread support
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@86 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9d52f65ae7657b36c57ed60735e8b9fa826d4115
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 02:43:24 2009 +0000
+
+    Reindent
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@85 400ebc74-4327-4243-bc38-086b20814532
+
+commit df90d3d421b14bc695360ae6a61c3272dc3f25cd
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 02:37:34 2009 +0000
+
+    More cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@84 400ebc74-4327-4243-bc38-086b20814532
+
+commit c3152d5b0a89cd7750c00e143afe92a69f24c1db
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 02:27:24 2009 +0000
+
+    Convert streams to C
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@83 400ebc74-4327-4243-bc38-086b20814532
+
+commit d5052931eb882bead0b08f90c73bacb5c41d3ace
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 01:45:33 2009 +0000
+
+    Notes for 2.0
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@82 400ebc74-4327-4243-bc38-086b20814532
+
+commit e091ec9a007347adcb3a06043ea10f83bb70c7eb
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 01:39:51 2009 +0000
+
+    More namespace cleanup
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@81 400ebc74-4327-4243-bc38-086b20814532
+
+commit 024985a96b73e167dd0c5793ecee0434c34df8da
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 01:12:49 2009 +0000
+
+    More MinGW stuff
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@80 400ebc74-4327-4243-bc38-086b20814532
+
+commit a486687e16a88cd615aae4a1ef3315c0f08c9e2c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Thu Dec 17 01:10:04 2009 +0000
+
+    MinGW portability fixes
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@79 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4eff9a70c5123641ba6dd121864cc29d318e197b
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 23:53:41 2009 +0000
+
+    Plug memory leaks
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@78 400ebc74-4327-4243-bc38-086b20814532
+
+commit 0fc45adba2551afde8c75f3b1b0d8a8b217bf616
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 23:38:51 2009 +0000
+
+    Hide DH helpers
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@77 400ebc74-4327-4243-bc38-086b20814532
+
+commit 4539e66780941175c87c2344f3f685f3e45f0fb7
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 21:16:10 2009 +0000
+
+    Move bytes.c functions out of main namespace
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@76 400ebc74-4327-4243-bc38-086b20814532
+
+commit 74b8cdcd470c9f60fe53f122be93cf80904cee71
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 20:38:58 2009 +0000
+
+    Drop C++ from Makefile
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@75 400ebc74-4327-4243-bc38-086b20814532
+
+commit 9abb0972946dc323d971dbf85bfc3fa3bc6f418c
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 20:34:35 2009 +0000
+
+    Remove C++ code from trunk
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@74 400ebc74-4327-4243-bc38-086b20814532
+
+commit a1e75b92761170dd6f75407fbb7c5341f58a0ac6
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 20:23:13 2009 +0000
+
+    Move new C code to trunk
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@72 400ebc74-4327-4243-bc38-086b20814532
+
+commit 7d67491ac088140ada384352459b8d1877af2e55
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 20:01:31 2009 +0000
+
+    Use trunk for main development
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@67 400ebc74-4327-4243-bc38-086b20814532
+
+commit e30a95bbd719bbce061a132b5318c83c6be7c069
+Author: hyc <hyc@400ebc74-4327-4243-bc38-086b20814532>
+Date:   Wed Dec 16 19:56:56 2009 +0000
+
+    Split off a tags directory for release tagging
+    
+    
+    git-svn-id: svn://svn.mplayerhq.hu/rtmpdump/trunk@66 400ebc74-4327-4243-bc38-086b20814532

@@ -1,0 +1,13 @@
+diff --git a/librtmp/Makefile b/librtmp/Makefile
+index a0125f1..7307612 100644
+--- a/librtmp/Makefile
++++ b/librtmp/Makefile
+@@ -78,7 +78,7 @@ LDFLAGS=$(XLDFLAGS)
+ 
+ OBJS=rtmp.o log.o amf.o hashswf.o parseurl.o
+ 
+-all:	librtmp.a $(SO_LIB)
++all:	librtmp.a librtmp.pc $(SO_LIB)
+ 
+ clean:
+ 	rm -f *.o *.a *.$(SOX) *.$(SO_EXT) librtmp.pc

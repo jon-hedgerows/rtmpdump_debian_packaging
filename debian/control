@@ -1,0 +1,31 @@
+Source: rtmpdump
+Priority: extra
+Maintainer: Jon Davies <jon@hedgerows.org.uk>
+Build-Depends: cdbs,
+               libssl-dev,
+               zlib1g-dev
+Standards-Version: 3.9.0
+Section: web
+Homepage: http://rtmpdump.mplayerhq.hu/
+
+Package: rtmpdump
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A small dumper for media content streamed over the RTMP protocol
+ A small dumper for media content streamed over the RTMP protocol (like BBC's
+ iPlayer high quality streams). Supplying an rtmp url will result in a dumped
+ flv file, which can be played/transcoded using ffmpeg/mplayer, etc.
+
+Package: librtmp-dev
+Section: libdevel
+Depends: libssl-dev, ${misc:Depends}
+Architecture: any
+Description: toolkit for RTMP streams (development files)
+ A small dumper for media content streamed over the RTMP protocol (like BBC's
+ iPlayer high quality streams). Supplying an rtmp url will result in a dumped
+ flv file, which can be played/transcoded using ffmpeg/mplayer, etc.
+ .
+ This package contains the development libraries, header files needed by
+ programs that want to compile with librtmp, and a static library only.
+ No shared library is provided to avoid conflicts arising from breaking
+ changes in the library.

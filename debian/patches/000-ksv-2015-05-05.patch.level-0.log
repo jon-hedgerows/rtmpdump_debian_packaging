@@ -1,0 +1,15 @@
+patching file Makefile
+patching file librtmp/Makefile
+patching file librtmp/amf.c
+patching file librtmp/handshake.h
+patching file librtmp/hashswf.c
+patching file librtmp/log.c
+patching file librtmp/parseurl.c
+patching file librtmp/rtmp.c
+patching file librtmp/rtmp.h
+patching file librtmp/rtmp_sys.h
+patching file rtmpdump.c
+patching file rtmpgw.c
+patching file rtmpsrv.c
+patching file rtmpsuck.c
+patching file thread.c

@@ -1,0 +1,18 @@
+This package was debianized by Jon Davies <jon@hedgerows.org.uk>
+{Date}
+
+It was downloaded from: svn://svn.mplayerhq.hu/rtmpdump/trunk
+
+Upstream Author(s): Andrej Stenchuk, Howard Chu
+
+Copyright:
+        Copyright (C) 2009 Andrej Stepanchuk, 2009-2010 Howard Chu
+
+License:
+	GPLv2
+	librtmp license: LGPLv2.1
+	http://rtmpdump.mplayerhq.hu/
+
+Packaging:
+        Copyright (C) 2011 Jon Davies
+        released under GPL v2 - see COPYING
