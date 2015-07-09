@@ -13,6 +13,8 @@ tar xf rtmpdump.git.tar
 # copy the debian directory into place and adjust
 cp -R $mydir $parentdir/rtmpdump.git
 cd $mydir
+# get a version number for this release
+cat versionppa.sh | sed s/verppa=.*$/verppa=$(git describe --tags | sed 's/-/x/g')/ > $parentdir/get_iplayer.git/debian/versionppa.sh
 # record the actual git log
 cd $parentdir/rtmpdump.git
 git log > $parentdir/rtmpdump.git/debian/README.git-log
@@ -25,7 +27,7 @@ for dist in precise trusty utopic vivid ; do
   cd $parentdir/rtmpdump.git
   # only the debian changelog changes per dist, update it with a fudge
   cp $mydir/changelog debian/changelog
-  dch -v $($parentdir/rtmpdump.git/debian/version.sh)~$dist -D $dist "New upstream snapshot, see README.git-log"
+  dch -v $($parentdir/rtmpdump.git/debian/versionppa.sh)~$dist -D $dist "New upstream snapshot, see README.git-log"
   # and build the source packages
   debuild -S
 done
