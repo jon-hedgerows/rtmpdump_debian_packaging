@@ -14,7 +14,7 @@ tar xf rtmpdump.git.tar
 cp -R $mydir $parentdir/rtmpdump.git
 cd $mydir
 # get a version number for this release
-cat versionppa.sh | sed s/verppa=.*$/verppa=$(git describe --tags | sed 's/-/x/g')/ > $parentdir/get_iplayer.git/debian/versionppa.sh
+cat versionppa.sh | sed s/verppa=.*$/verppa=$(git describe --tags | sed 's/-/x/g')/ > $parentdir/rtmpdump.git/debian/versionppa.sh
 # record the actual git log
 cd $parentdir/rtmpdump.git
 git log > $parentdir/rtmpdump.git/debian/README.git-log
