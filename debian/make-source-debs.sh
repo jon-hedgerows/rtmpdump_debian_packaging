@@ -23,7 +23,7 @@ git log > $parentdir/rtmpdump.git/debian/README.git-log
 $parentdir/rtmpdump.git/debian/make-orig.tar.gz.sh
 
 # build source debs for each release
-for dist in precise trusty utopic vivid ; do
+for dist in precise trusty vivid wily xenial; do
   cd $parentdir/rtmpdump.git
   # only the debian changelog changes per dist, update it with a fudge
   cp $mydir/changelog debian/changelog
