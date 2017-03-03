@@ -36,6 +36,10 @@ for dist in precise trusty xenial yakkety zesty; do
   git log $LASTTAG.. --pretty=format:"%h: %s [%an]" | while read -r ll ; do dch -a "$ll" ; done
 
   # and build the source packages
-  debuild -S
+  if [ -z $DEBSIGN_KEYID ]; then
+    debuild -S
+  else
+    debuild -S -k$DEBSIGN_KEYID
+  fi
 done
 
