@@ -1,15 +1,20 @@
 #!/bin/bash
+#
+# either get an existing rtmpdump_<version>.orig.tar.gz, or make one
+
+# existing .orig.tar.gz files at 
+#  https://launchpad.net/~jon-hedgerows/+archive/rtmpdump/+files/rtmpdump_<version>.orig.tar.gz
+# are considered canonical and hence reused
 
 force=$1
 debiandir=$(dirname $(readlink -f $0))
 packagedir=$(basename $(readlink -f $debiandir/..))
 outputdir=$(readlink -f $debiandir/../..)
 
-version=$(head -1 $debiandir/changelog  | cut -f2 -d\( | cut -f1 -d\) | sed "s/-ppa[0-9]*//")
-package=$(head -1 $debiandir/changelog  | cut -f1 -d\ )
+version=$($debiandir/version.sh)
 
-pushd $outputdir > /dev/null
-tarball=${package}_${version}.orig.tar.gz
+cd $outputdir
+tarball=rtmpdump_${version}.orig.tar.gz
 
 if [ -e $tarball ] ; then
   if [ "$force" = "-f" ]; then
@@ -17,8 +22,18 @@ if [ -e $tarball ] ; then
   else
     echo $tarball already exists
     echo not updated.  use $0 -f to force update
+    exit 0
   fi
 fi
-test -e $tarball || tar czvf $tarball $packagedir --exclude=debian --exclude=.git
-popd > /dev/null
+
+# first try to get tarball from launchpad
+if curl https://launchpad.net/~jon-hedgerows/+archive/rtmpdump/+files/$tarball --location -o $tarball --fail -s ; then
+  # ok - fetched from get-iplayer
+  echo Fetched $tarball from ppa:jon-hedgerows/rtmpdump
+  exit 0
+else
+  # create a new one
+  echo Creating new $tarball
+  tar czvf $tarball $packagedir --exclude=debian --exclude=.git
+fi
 

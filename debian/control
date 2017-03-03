@@ -1,10 +1,10 @@
 Source: rtmpdump
 Priority: extra
 Maintainer: Jon Davies <jon@hedgerows.org.uk>
-Build-Depends: cdbs,
+Build-Depends: debhelper, cdbs,
                libssl-dev,
                zlib1g-dev
-Standards-Version: 3.9.0
+Standards-Version: 3.9.7
 Section: web
 Homepage: http://rtmpdump.mplayerhq.hu/
 

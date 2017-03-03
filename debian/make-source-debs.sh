@@ -16,18 +16,25 @@ cd $mydir
 # get a version number for this release
 cat versionppa.sh | sed s/verppa=.*$/verppa=$(git describe --tags | sed 's/-/x/g')/ > $parentdir/rtmpdump.git/debian/versionppa.sh
 # record the actual git log
-cd $parentdir/rtmpdump.git
-git log > $parentdir/rtmpdump.git/debian/README.git-log
+#cd $parentdir/rtmpdump.git
+#git log > $parentdir/rtmpdump.git/debian/README.git-log
 
 # make an orig.tar.gz
 $parentdir/rtmpdump.git/debian/make-orig.tar.gz.sh
 
 # build source debs for each release
-for dist in precise trusty wily xenial yakkety; do
+for dist in precise trusty xenial yakkety zesty; do
   cd $parentdir/rtmpdump.git
-  # only the debian changelog changes per dist, update it with a fudge
+  # only the debian changelog changes per dist, update it
+  #cp $mydir/changelog debian/changelog
+  #dch -v $($parentdir/rtmpdump.git/debian/versionppa.sh)~$dist -D $dist "New upstream snapshot, see README.git-log"
   cp $mydir/changelog debian/changelog
-  dch -v $($parentdir/rtmpdump.git/debian/versionppa.sh)~$dist -D $dist "New upstream snapshot, see README.git-log"
+  LASTTAGSHORT=$(head -1 debian/changelog  | sed 's/^.*git\(.......\)-.*$/\1/g')
+  LASTTAG=$(git rev-parse $LASTTAGSHORT)
+  dch -b -v $($parentdir/rtmpdump.git/debian/versionppa.sh)~$dist -D $dist "New upstream snapshot"
+  # and add the short git logs
+  git log $LASTTAG.. --pretty=format:"%h: %s [%an]" | while read -r ll ; do dch -a "$ll" ; done
+
   # and build the source packages
   debuild -S
 done
