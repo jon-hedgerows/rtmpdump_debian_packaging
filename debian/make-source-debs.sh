@@ -23,7 +23,7 @@ cat versionppa.sh | sed s/verppa=.*$/verppa=$(git describe --tags | sed 's/-/x/g
 $parentdir/rtmpdump.git/debian/make-orig.tar.gz.sh
 
 # build source debs for each release
-for dist in precise trusty xenial yakkety zesty; do
+for dist in trusty xenial yakkety zesty artful; do
   cd $parentdir/rtmpdump.git
   # only the debian changelog changes per dist, update it
   #cp $mydir/changelog debian/changelog
